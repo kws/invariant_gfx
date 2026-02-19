@@ -72,13 +72,13 @@ All constraints from Invariant apply, plus graphics-specific rules:
 invariant_gfx provides a standard library of graphics operations organized into groups:
 
 ### **Group A: Sources (Data Ingestion)**
-- `fetch_resource`: Downloads external assets (images, fonts, SVGs) with version-based caching
-- `create_solid`: Generates solid color or gradient textures
+- `resolve_resource`: Resolves bundled resources (icons, images) via JustMyResource
+- `create_solid`: Generates solid color canvas
 
 ### **Group B: Transformers (Rendering)**
-- `render_svg`: Converts SVG blobs into raster artifacts (sandboxed, no network access)
-- `render_text`: Creates tight-fitting "Text Pill" artifacts
-- `render_shape`: Renders primitive vector shapes (rect, rounded_rect, ellipse, line)
+- `render_svg`: Converts SVG blobs into raster artifacts using cairosvg
+- `render_text`: Creates tight-fitting "Text Pill" artifacts (uses JustMyType for font resolution)
+- `resize`: Scales an ImageArtifact to target dimensions
 
 ### **Group C: Composition (Combiners)**
 - `composite`: Fixed-size composition engine with anchor-based positioning
@@ -91,20 +91,15 @@ See [docs/architecture.md](./docs/architecture.md) for detailed specifications o
 
 ## **Missing Upstream Features (Gaps in Invariant)**
 
-The following features are needed by invariant_gfx but are **not yet implemented** in Invariant. These should be clearly documented when encountered:
+After reviewing the actual Invariant codebase, the status is:
 
-| Feature | Description | Needed For |
+| Feature | Status | Notes |
 | :---- | :---- | :---- |
-| **Expression Evaluation** | `${...}` template syntax in Node params (e.g., `${input.background}`, `${Decimal(input.width) * Decimal('0.8')}`) | Referencing upstream artifacts and external context in params |
-| **Context Injection** | External input data passed to graph execution (e.g., `pipeline.render(graph, context={"input": render_input})`) | Providing dynamic render inputs without hardcoding in graph |
-| **Pipeline Class** | Ergonomic wrapper around Executor with context support | `Pipeline` or `RenderPipeline` class for easier graph execution |
-| **List/Dict Cacheable Types** | Composite data structures implementing ICacheable | Complex params (layer lists, asset dictionaries) |
-| **Op Namespace Enforcement** | Formal `namespace:op_name` convention with validation | Avoiding collisions between core ops and extension ops |
-
-**Current Workaround:** Until these features are implemented, invariant_gfx may need to:
-- Use identity nodes for external inputs
-- Pass literal values in params (no expression evaluation)
-- Implement Pipeline wrapper in invariant_gfx (may later move to invariant core)
+| **Expression Evaluation** | **Not needed for v1** | Executor populates manifest with upstream artifacts keyed by dep node ID. Ops access results via `manifest["node_id"]`. |
+| **Context Injection** | **Handled by Pipeline wrapper** | Pipeline class (in invariant_gfx) accepts context dict and creates identity nodes automatically. |
+| **Pipeline Class** | **To be implemented in invariant_gfx** | Wraps Executor with context support and dual-cache (MemoryStore + DiskStore). |
+| **List/Dict Cacheable Types** | **Partial** | `hash_value()` hashes lists/dicts recursively, but standalone `List`/`Dict` ICacheable types don't exist. **V1 workaround:** Pass layer specs as plain Python dicts/lists in params (they're only used in manifests, not stored as artifacts). |
+| **Op Namespace Enforcement** | **Not needed for v1** | Convention-based namespacing is sufficient (core ops use bare names, extensions use `namespace:op_name`).
 
 ## **External Dependencies**
 
@@ -113,7 +108,7 @@ invariant_gfx depends on:
 - **Invariant:** The parent DAG execution engine
 - **Pillow (PIL):** Image manipulation and rendering
 - **JustMyType:** Font discovery and resolution (see [github.com/kws/justmytype](https://github.com/kws/justmytype))
-- **JustMyResource:** Icon/resource discovery (see [docs/icons.md](./docs/icons.md) in this project)
+- **JustMyResource:** Icon/resource discovery (see [github.com/kws/justmyresource](https://github.com/kws/justmyresource))
 
 ## **Execution Model: Inherited from Invariant**
 
