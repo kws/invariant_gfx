@@ -233,7 +233,7 @@ version = "4.61.1"
 description = "Tools to manipulate font files"
 optional = false
 python-versions = ">=3.10"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "fonttools-4.61.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7c7db70d57e5e1089a274cbb2b1fd635c9a24de809a231b154965d415d6c6d24"},
     {file = "fonttools-4.61.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:5fe9fd43882620017add5eabb781ebfbc6998ee49b35bd7f8f79af1f9f99a958"},
@@ -412,7 +412,7 @@ version = "1.1.1"
 description = "Resource discovery and resolution library for Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "justmyresource-1.1.1-py3-none-any.whl", hash = "sha256:bba482ef103f4ff5e4227defffc20bfd2190c6fe247172896e73aaff4d181bb9"},
     {file = "justmyresource-1.1.1.tar.gz", hash = "sha256:a0ad236ffbe8b440241da3e6ef2f1e475f6d86dc7a56d7d21a60dff5a697ba41"},
@@ -526,7 +526,7 @@ version = "0.3.0"
 description = "Cross-platform font discovery and resolution library for Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "justmytype-0.3.0-py3-none-any.whl", hash = "sha256:1055bce47cc94495d9374ea9037d66318b274a80add4ed55048c73a07975ed70"},
     {file = "justmytype-0.3.0.tar.gz", hash = "sha256:6675a1aab63a2fce99af34d948bf2b0a9fb98b78cbe53c61fef2409fbd71c822"},
@@ -1085,4 +1085,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "3697a5453628fbdc4dff52b1fb2eabd83adc529354ac49872b5e51edd6b19e7c"
+content-hash = "b51c61f23e59e58eb7bb58a41dab5d36bdaf299bbb9e0fab123f9ce0bcd01b83"
