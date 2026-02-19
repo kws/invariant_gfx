@@ -7,18 +7,22 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "invariant @ file:///Users/kws/work/invariant",
-    "justmytype (>=0.3.0,<0.4.0)",
-    "justmyresource[icons] (>=1.1.1,<2.0.0)"
-]
+requires-python = ">=3.10,<4.0"
 
 [tool.poetry]
+packages = [{include = "invariant_gfx", from = "src"}]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15.1"
 pytest = "^9.0.2"
+
+
+[tool.poetry.dependencies]
+invariant = {path = "/Users/kws/work/invariant", develop = true}
+justmytype = ">=0.3.0,<0.4.0"
+justmyresource = {extras = ["icons"], version = ">=1.1.1,<2.0.0"}
+Pillow = ">=12.1.1,<13.0.0"
+cairosvg = ">=2.8.2,<3.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
