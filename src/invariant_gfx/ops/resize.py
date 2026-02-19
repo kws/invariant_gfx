@@ -14,7 +14,7 @@ def resize(manifest: dict[str, Any]) -> ICacheable:
 
     Args:
         manifest: Must contain:
-            - Upstream ImageArtifact (accessed via dependency ID)
+            - 'image': ImageArtifact (the image to resize)
             - 'width': Decimal (target width)
             - 'height': Decimal (target height)
 
@@ -25,10 +25,18 @@ def resize(manifest: dict[str, Any]) -> ICacheable:
         KeyError: If required keys are missing.
         ValueError: If width/height values are invalid.
     """
+    if "image" not in manifest:
+        raise KeyError("gfx:resize requires 'image' in manifest")
     if "width" not in manifest:
         raise KeyError("gfx:resize requires 'width' in manifest")
     if "height" not in manifest:
         raise KeyError("gfx:resize requires 'height' in manifest")
+
+    image_artifact = manifest["image"]
+    if not isinstance(image_artifact, ImageArtifact):
+        raise ValueError(
+            f"image must be ImageArtifact, got {type(image_artifact)}"
+        )
 
     width_val = manifest["width"]
     height_val = manifest["height"]
@@ -50,26 +58,6 @@ def resize(manifest: dict[str, Any]) -> ICacheable:
 
     if width <= 0 or height <= 0:
         raise ValueError(f"size must be positive, got {width}x{height}")
-
-    # Find the upstream ImageArtifact
-    # The artifact is in the manifest keyed by its dependency ID
-    # We look for ImageArtifact instances, excluding known parameter keys
-    known_params = {"width", "height"}
-    image_artifact = None
-    for key, value in manifest.items():
-        if key not in known_params and isinstance(value, ImageArtifact):
-            if image_artifact is not None:
-                raise ValueError(
-                    "gfx:resize found multiple ImageArtifacts in manifest. "
-                    "Resize expects exactly one upstream dependency."
-                )
-            image_artifact = value
-
-    if image_artifact is None:
-        raise KeyError(
-            "gfx:resize requires an upstream ImageArtifact in manifest. "
-            "Make sure the source node is listed in deps."
-        )
 
     # Resize the image
     resized_image = image_artifact.image.resize(

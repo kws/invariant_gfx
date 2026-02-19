@@ -195,7 +195,7 @@ Resolves a font family name to its raw font file bytes via JustMyType.
 Converts SVG blobs into raster artifacts using cairosvg.
 
 * **Inputs:**  
-  * `svg_content`: `BlobArtifact` (the SVG XML bytes, accessed via `${upstream_node}` expression).  
+  * `svg_content`: `str` (inline SVG XML), `bytes`, or `BlobArtifact` (accessed via `${upstream_node}` expression).  
   * `width`: Decimal (target raster width in pixels).  
   * `height`: Decimal (target raster height in pixels).  
 * **Output:** `ImageArtifact` (RGBA mode).  
@@ -227,7 +227,7 @@ Creates a tight-fitting "Text Pill" artifact using Pillow.
 Scales an `ImageArtifact` to target dimensions.
 
 * **Inputs:**  
-  * `image`: `ImageArtifact` (accessed via `${upstream_node.image}` expression).  
+  * `image`: `ImageArtifact` (accessed via `${upstream_node}` expression).  
   * `width`: Decimal (target width).  
   * `height`: Decimal (target height).  
 * **Output:** `ImageArtifact` (resized, RGBA mode).  
@@ -365,7 +365,7 @@ Content-sized arrangement engine. Arranges items in a flow (row or column) when 
 Parses raw binary data (PNG, JPEG, WEBP) into a decoded `ImageArtifact`.
 
 * **Inputs:**  
-  * `blob`: `BlobArtifact` (accessed via `${upstream_node.data}` expression).  
+  * `blob`: `BlobArtifact` (accessed via `${upstream_node}` expression).  
 * **Output:** `ImageArtifact` (RGBA mode).  
 * **Purpose:** Allows downloaded raster images (from `fetch_resource` or external sources) to be used in composite (which requires dimensions) or as assets in render\_svg.  
 * **Use Case:** Converting downloaded PNG/JPEG images into compositable artifacts.
@@ -388,7 +388,7 @@ After reviewing the actual Invariant codebase, here is the accurate status of fe
 | **ChainStore** | **Implemented upstream.** `invariant/store/chain.py` provides MemoryStore (L1) + DiskStore (L2) two-tier cache with automatic promotion from L2 to L1 on cache hits. |
 | **List/Dict Cacheable Types** | **Partial.** `hash_value()` in Invariant already hashes lists/dicts recursively. However, `List` and `Dict` as top-level `ICacheable` types (with `to_stream`/`from_stream`) do not exist. **V1 workaround:** Pass layer specs as plain Python dicts/lists in params. The manifest hashing will work, but these cannot be stored as standalone artifacts. For v1, this is acceptable since layer specs are only intermediate data. |
 
-**V1 Approach:** Use `Executor` and `ChainStore` directly from upstream. Ops access upstream artifacts via `${...}` expressions in params (e.g., `"${icon_blob.data}"`). Layer specs are passed as plain dicts/lists (not as ICacheable artifacts) since they're only used in manifests, not stored independently.
+**V1 Approach:** Use `Executor` and `ChainStore` directly from upstream. Ops access upstream artifacts via `${...}` expressions in params (e.g., `"${icon_blob}"`). Layer specs are passed as plain dicts/lists (not as ICacheable artifacts) since they're only used in manifests, not stored independently.
 
 ### **5.1 Known Upstream Constraints**
 
@@ -587,7 +587,7 @@ template = {
     "icon": Node(
         op_name="gfx:render_svg",
         params={
-            "svg_content": "${icon_blob.data}",  # Access upstream artifact via expression
+            "svg_content": "${icon_blob}",  # Access upstream artifact via expression
             "width": Decimal("50"),
             "height": Decimal("50"),
         },

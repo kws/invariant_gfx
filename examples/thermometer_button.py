@@ -53,7 +53,7 @@ def create_thermometer_graph(
         "icon": Node(
             op_name="gfx:render_svg",
             params={
-                "svg_content": "${icon_blob.data}",
+                "svg_content": "${icon_blob}",
                 "width": Decimal("50"),
                 "height": Decimal("50"),
             },

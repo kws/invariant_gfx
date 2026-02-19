@@ -21,7 +21,7 @@ class TestRenderSvg:
         svg_blob = BlobArtifact(data=resource.data, content_type=resource.content_type)
 
         manifest = {
-            "svg": svg_blob,
+            "svg_content": svg_blob,
             "width": Decimal("48"),
             "height": Decimal("48"),
         }
@@ -103,15 +103,32 @@ class TestRenderSvg:
         with pytest.raises(KeyError, match="height"):
             render_svg(manifest)
 
-    def test_missing_svg_blob(self):
-        """Test that missing SVG blob raises KeyError."""
+    def test_missing_svg_content(self):
+        """Test that missing svg_content raises KeyError."""
         manifest = {
             "width": 48,
             "height": 48,
         }
 
-        with pytest.raises(KeyError, match="BlobArtifact"):
+        with pytest.raises(KeyError, match="svg_content"):
             render_svg(manifest)
+
+    def test_inline_svg_string(self):
+        """Test rendering inline SVG string."""
+        svg_string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" fill="red"/></svg>'
+
+        manifest = {
+            "svg_content": svg_string,
+            "width": Decimal("48"),
+            "height": Decimal("48"),
+        }
+
+        result = render_svg(manifest)
+
+        assert isinstance(result, ImageArtifact)
+        assert result.width == 48
+        assert result.height == 48
+        assert result.image.mode == "RGBA"
 
     def test_negative_dimensions(self):
         """Test that negative dimensions raise ValueError."""
@@ -135,7 +152,7 @@ class TestRenderSvg:
         blob = BlobArtifact(data=b"not an svg", content_type="image/svg+xml")
 
         manifest = {
-            "svg": blob,
+            "svg_content": blob,
             "width": 48,
             "height": 48,
         }

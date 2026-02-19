@@ -76,7 +76,7 @@ class TestBlobToImage:
         """Test that missing blob raises KeyError."""
         manifest = {}
 
-        with pytest.raises(KeyError, match="BlobArtifact"):
+        with pytest.raises(KeyError, match="blob"):
             blob_to_image(manifest)
 
     def test_invalid_blob_data(self):
@@ -90,15 +90,11 @@ class TestBlobToImage:
         with pytest.raises(ValueError, match="failed to parse"):
             blob_to_image(manifest)
 
-    def test_multiple_blobs(self):
-        """Test that multiple blobs raise ValueError."""
-        blob1 = BlobArtifact(data=b"data1", content_type="image/png")
-        blob2 = BlobArtifact(data=b"data2", content_type="image/png")
-
+    def test_invalid_blob_type(self):
+        """Test that non-BlobArtifact raises ValueError."""
         manifest = {
-            "blob1": blob1,
-            "blob2": blob2,
+            "blob": "not a blob",
         }
 
-        with pytest.raises(ValueError, match="multiple BlobArtifacts"):
+        with pytest.raises(ValueError, match="must be BlobArtifact"):
             blob_to_image(manifest)

@@ -14,7 +14,7 @@ def blob_to_image(manifest: dict[str, Any]) -> ICacheable:
 
     Args:
         manifest: Must contain:
-            - Upstream BlobArtifact (accessed via dependency ID)
+            - 'blob': BlobArtifact (the blob to parse)
 
     Returns:
         ImageArtifact with decoded image (RGBA mode).
@@ -23,22 +23,13 @@ def blob_to_image(manifest: dict[str, Any]) -> ICacheable:
         KeyError: If BlobArtifact is missing.
         ValueError: If blob data cannot be parsed as an image.
     """
-    # Find the upstream BlobArtifact
-    # The artifact is in the manifest keyed by its dependency ID
-    blob_artifact = None
-    for key, value in manifest.items():
-        if isinstance(value, BlobArtifact):
-            if blob_artifact is not None:
-                raise ValueError(
-                    "gfx:blob_to_image found multiple BlobArtifacts in manifest. "
-                    "blob_to_image expects exactly one upstream dependency."
-                )
-            blob_artifact = value
+    if "blob" not in manifest:
+        raise KeyError("gfx:blob_to_image requires 'blob' in manifest")
 
-    if blob_artifact is None:
-        raise KeyError(
-            "gfx:blob_to_image requires an upstream BlobArtifact in manifest. "
-            "Make sure the source node is listed in deps."
+    blob_artifact = manifest["blob"]
+    if not isinstance(blob_artifact, BlobArtifact):
+        raise ValueError(
+            f"blob must be BlobArtifact, got {type(blob_artifact)}"
         )
 
     # Parse the image from bytes

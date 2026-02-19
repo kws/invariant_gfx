@@ -17,7 +17,7 @@ class TestResize:
         source = ImageArtifact(Image.new("RGBA", (10, 20), (255, 0, 0, 255)))
 
         manifest = {
-            "source": source,
+            "image": source,
             "width": Decimal("20"),
             "height": Decimal("40"),
         }
@@ -83,14 +83,14 @@ class TestResize:
         with pytest.raises(KeyError, match="height"):
             resize(manifest)
 
-    def test_missing_source(self):
-        """Test that missing source artifact raises KeyError."""
+    def test_missing_image(self):
+        """Test that missing image raises KeyError."""
         manifest = {
             "width": 20,
             "height": 20,
         }
 
-        with pytest.raises(KeyError, match="ImageArtifact"):
+        with pytest.raises(KeyError, match="image"):
             resize(manifest)
 
     def test_negative_dimensions(self):
@@ -119,19 +119,15 @@ class TestResize:
         with pytest.raises(ValueError, match="size must be positive"):
             resize(manifest)
 
-    def test_multiple_artifacts(self):
-        """Test that multiple artifacts raise ValueError."""
-        source1 = ImageArtifact(Image.new("RGBA", (10, 10), (255, 0, 0, 255)))
-        source2 = ImageArtifact(Image.new("RGBA", (10, 10), (0, 255, 0, 255)))
-
+    def test_invalid_image_type(self):
+        """Test that non-ImageArtifact raises ValueError."""
         manifest = {
-            "source1": source1,
-            "source2": source2,
+            "image": "not an image",
             "width": 20,
             "height": 20,
         }
 
-        with pytest.raises(ValueError, match="multiple ImageArtifacts"):
+        with pytest.raises(ValueError, match="must be ImageArtifact"):
             resize(manifest)
 
     def test_preserves_aspect_ratio_approximately(self):

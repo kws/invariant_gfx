@@ -89,14 +89,15 @@ def test_layered_badge_pipeline():
     # Top-left corner should be dark gray (background)
     assert final_image.getpixel((0, 0)) == (40, 40, 40, 255)
     # Badge region should have red pixels
-    # Icon is centered at (36, 36), so it's from (20, 20) to (52, 52)
-    # Badge uses "se,se" alignment: self's bottom-left (se) aligns with parent's bottom-left (se)
+    # Icon is centered at (36, 36) and is 32x32, so it's from (20, 20) to (52, 52)
+    # Badge uses "se,se" alignment: badge's bottom-left (se) aligns with icon's bottom-left (se)
     # Icon's bottom-left (se) is at (20, 52)
     # With offset x=-2, y=2, badge's bottom-left should be at (18, 54)
     # Badge is 12x12, so it extends from (18, 42) to (30, 54)
-    # Actually, let's check a pixel that should definitely be in the badge
-    # The badge's bottom-left corner area should be red
-    assert final_image.getpixel((24, 50)) == (200, 0, 0, 255)
+    # Check a pixel that should definitely be in the badge (center of badge)
+    badge_center_x = 18 + 6  # 24
+    badge_center_y = 42 + 6  # 48
+    assert final_image.getpixel((badge_center_x, badge_center_y)) == (200, 0, 0, 255)
 
 
 def test_layered_badge_cache_reuse():

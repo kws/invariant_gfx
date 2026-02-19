@@ -16,7 +16,7 @@ def render_svg(manifest: dict[str, Any]) -> ICacheable:
 
     Args:
         manifest: Must contain:
-            - Upstream BlobArtifact (SVG content, accessed via dependency ID)
+            - 'svg_content': str (inline SVG XML), bytes, or BlobArtifact
             - 'width': Decimal (target raster width in pixels)
             - 'height': Decimal (target raster height in pixels)
 
@@ -27,11 +27,14 @@ def render_svg(manifest: dict[str, Any]) -> ICacheable:
         KeyError: If required keys are missing.
         ValueError: If SVG cannot be rendered or dimensions are invalid.
     """
+    if "svg_content" not in manifest:
+        raise KeyError("gfx:render_svg requires 'svg_content' in manifest")
     if "width" not in manifest:
         raise KeyError("gfx:render_svg requires 'width' in manifest")
     if "height" not in manifest:
         raise KeyError("gfx:render_svg requires 'height' in manifest")
 
+    svg_content = manifest["svg_content"]
     width_val = manifest["width"]
     height_val = manifest["height"]
 
@@ -53,31 +56,25 @@ def render_svg(manifest: dict[str, Any]) -> ICacheable:
     if width <= 0 or height <= 0:
         raise ValueError(f"size must be positive, got {width}x{height}")
 
-    # Find the upstream BlobArtifact
-    known_params = {"width", "height"}
-    svg_blob = None
-    for key, value in manifest.items():
-        if key not in known_params and isinstance(value, BlobArtifact):
-            if svg_blob is not None:
-                raise ValueError(
-                    "gfx:render_svg found multiple BlobArtifacts in manifest. "
-                    "render_svg expects exactly one upstream dependency."
-                )
-            svg_blob = value
-
-    if svg_blob is None:
-        raise KeyError(
-            "gfx:render_svg requires an upstream BlobArtifact in manifest. "
-            "Make sure the source node is listed in deps."
+    # Extract SVG bytes from svg_content
+    if isinstance(svg_content, str):
+        # Inline SVG string - encode to bytes
+        svg_bytes = svg_content.encode("utf-8")
+    elif isinstance(svg_content, bytes):
+        # Raw bytes (e.g., from ${blob.data} expression)
+        svg_bytes = svg_content
+    elif isinstance(svg_content, BlobArtifact):
+        # BlobArtifact - extract data
+        svg_bytes = svg_content.data
+    else:
+        raise ValueError(
+            f"svg_content must be str, bytes, or BlobArtifact, got {type(svg_content)}"
         )
-
-    # Verify it's SVG (be lenient - some SVG resources might not have exact content type)
-    # We'll try to render it anyway
 
     # Render SVG to PNG using cairosvg
     try:
         png_bytes = cairosvg.svg2png(
-            bytestring=svg_blob.data,
+            bytestring=svg_bytes,
             output_width=width,
             output_height=height,
         )
