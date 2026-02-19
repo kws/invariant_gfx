@@ -1,8 +1,8 @@
-# **invariant\_icon: The Functional Graphics Pipeline**
+# **invariant\_gfx: The Functional Graphics Pipeline**
 
-**invariant\_icon** is a deterministic, DAG-based graphics engine built on **Invariant**. It allows developers to build complex visual assets (like Stream Deck buttons, dynamic badges, or data visualizations) by plugging together reusable "pipeline parts."
+**invariant\_gfx** is a deterministic, DAG-based graphics engine built on **Invariant**. It allows developers to build complex visual assets (like Stream Deck buttons, dynamic badges, or data visualizations) by plugging together reusable "pipeline parts."
 
-Unlike traditional imperative rendering (where you draw lines on a mutable canvas), invariant\_icon is **functional**: every layer, mask, or composition is an immutable **Artifact** produced by a pure function.
+Unlike traditional imperative rendering (where you draw lines on a mutable canvas), invariant\_gfx is **functional**: every layer, mask, or composition is an immutable **Artifact** produced by a pure function.
 
 ## **1\. Core Philosophy**
 
@@ -26,27 +26,107 @@ All layout inputs (offsets, font sizes, opacity) use decimal.Decimal or int to e
 
 ## **2\. Data Transfer Objects (Artifacts)**
 
-We standardise on two Artifact types to ensure interoperability between all Ops.
+We standardise on two Artifact types to ensure interoperability between all Ops. Both implement the `ICacheable` protocol from Invariant.
 
 ### **ImageArtifact**
 
 The universal visual primitive passed between nodes.
 
-* **Content:** A PIL.Image (Standardized to **RGBA**).  
-* **Serialization:** Canonical **PNG** (Level 1 compression, metadata stripped).  
-* **Identity:** SHA-256 of the PNG bytes.  
-* **Properties:** Exposes .width and .height to downstream Ops.
+* **Content:** A `PIL.Image` (standardized to **RGBA** mode).  
+* **Serialization:** Canonical **PNG** (zlib level 1 compression, metadata stripped).  
+* **Identity:** SHA-256 of the canonical PNG bytes (via `get_stable_hash()`).  
+* **Properties:** Exposes `.width`, `.height`, and `.image` (the PIL.Image object).
+
+**ICacheable Implementation:**
+
+```python
+class ImageArtifact(ICacheable):
+    def __init__(self, image: PIL.Image):
+        # Normalize to RGBA mode
+        if image.mode != "RGBA":
+            image = image.convert("RGBA")
+        self.image = image
+    
+    @property
+    def width(self) -> int:
+        return self.image.width
+    
+    @property
+    def height(self) -> int:
+        return self.image.height
+    
+    def get_stable_hash(self) -> str:
+        """SHA-256 of canonical PNG bytes."""
+        import hashlib
+        png_bytes = self._to_canonical_png()
+        return hashlib.sha256(png_bytes).hexdigest()
+    
+    def to_stream(self, stream: BinaryIO) -> None:
+        """Serialize as canonical PNG."""
+        png_bytes = self._to_canonical_png()
+        stream.write(len(png_bytes).to_bytes(8, byteorder="big"))
+        stream.write(png_bytes)
+    
+    @classmethod
+    def from_stream(cls, stream: BinaryIO) -> "ImageArtifact":
+        """Deserialize from canonical PNG."""
+        length = int.from_bytes(stream.read(8), byteorder="big")
+        png_bytes = stream.read(length)
+        from PIL import Image
+        from io import BytesIO
+        image = Image.open(BytesIO(png_bytes))
+        return cls(image.convert("RGBA"))
+    
+    def _to_canonical_png(self) -> bytes:
+        """Convert to canonical PNG (level 1, no metadata)."""
+        from io import BytesIO
+        buffer = BytesIO()
+        self.image.save(buffer, format="PNG", compress_level=1, optimize=False)
+        return buffer.getvalue()
+```
 
 ### **BlobArtifact**
 
-Container for raw binary resources.
+Container for raw binary resources (SVG, PNG, TTF, etc.).
 
-* **Content:** Raw bytes.  
-* **Use Cases:** SVG source files, TTF font binaries, downloaded assets.
+* **Content:** Raw `bytes` + `content_type: str` (MIME type).  
+* **Use Cases:** SVG source files, TTF font binaries, downloaded assets, icon pack resources.  
+* **Identity:** SHA-256 of the raw bytes (via `get_stable_hash()`).
+
+**ICacheable Implementation:**
+
+```python
+class BlobArtifact(ICacheable):
+    def __init__(self, data: bytes, content_type: str):
+        self.data = data
+        self.content_type = content_type
+    
+    def get_stable_hash(self) -> str:
+        """SHA-256 of raw bytes."""
+        import hashlib
+        return hashlib.sha256(self.data).hexdigest()
+    
+    def to_stream(self, stream: BinaryIO) -> None:
+        """Serialize: [8 bytes: content_type_len][content_type][8 bytes: data_len][data]."""
+        content_type_bytes = self.content_type.encode("utf-8")
+        stream.write(len(content_type_bytes).to_bytes(8, byteorder="big"))
+        stream.write(content_type_bytes)
+        stream.write(len(self.data).to_bytes(8, byteorder="big"))
+        stream.write(self.data)
+    
+    @classmethod
+    def from_stream(cls, stream: BinaryIO) -> "BlobArtifact":
+        """Deserialize from stream."""
+        content_type_len = int.from_bytes(stream.read(8), byteorder="big")
+        content_type = stream.read(content_type_len).decode("utf-8")
+        data_len = int.from_bytes(stream.read(8), byteorder="big")
+        data = stream.read(data_len)
+        return cls(data, content_type)
+```
 
 ## **3\. Operation Registry & Extensibility**
 
-invariant\_icon relies on the core **Invariant OpRegistry** to map string identifiers to executable Python logic. This decoupling allows the pipeline to be purely declarative while supporting infinite extensibility.
+invariant\_gfx relies on the core **Invariant OpRegistry** to map string identifiers to executable Python logic. This decoupling allows the pipeline to be purely declarative while supporting infinite extensibility.
 
 ### **The Registry Pattern**
 
@@ -56,7 +136,7 @@ The pipeline does not contain code; it contains **references**. At runtime, the 
 registry \= OpRegistry()
 
 \# 1\. Register Standard Library (Core Ops)  
-invariant\_icon.register\_core\_ops(registry) 
+invariant\_gfx.register\_core\_ops(registry) 
 
 \# 2\. Register Custom/Application Ops  
 registry.register("myapp:custom\_filter", my\_custom\_filter\_op)
@@ -70,64 +150,71 @@ To prevent collisions in extensible pipelines, we enforce a namespacing conventi
 2. **Extension Ops (namespace:op\_name)**: For application-specific logic.  
    * Examples: filters:gaussian\_blur, analytics:render\_sparkline.
 
-## **4\. The Op Standard Library**
+## **4\. The Op Standard Library (V1 Scope)**
 
-These Ops form the "Instruction Set" of the graphics engine.
+These Ops form the "Instruction Set" of the graphics engine. The following ops are required for v1 deliverables (square canvases and custom-size dashboards).
 
 ### **Group A: Sources (Data Ingestion)**
 
-#### **fetch\_resource**
+#### **resolve\_resource**
 
-Handles external assets (images, fonts, SVGs) while preserving the Invariant contracts.
+Resolves bundled resources (icons, images) via JustMyResource.
 
 * **Inputs:**  
-  * url: Source URL.  
-  * version: **Mandatory** cache-buster.  
-* **Behavior:** If version matches the cache, the network request is skipped. Outputs a BlobArtifact.
+  * `name`: String resource identifier with optional pack prefix (e.g., `"lucide:thermometer"`, `"material-icons:cloud"`).  
+* **Output:** `BlobArtifact` containing the resource bytes.  
+* **Implementation:** Wraps `ResourceRegistry.get_resource(name)` from JustMyResource.  
+* **Use Case:** Fetching bundled icons from installed icon packs (Lucide, Material Icons, etc.).
 
 #### **create\_solid**
 
-Generates a solid color or gradient texture.
+Generates a solid color canvas.
 
 * **Inputs:**  
-  * size: Tuple\[Decimal, Decimal\].  
-  * color: RGBA Tuple.  
-* **Output:** ImageArtifact.
+  * `size`: Tuple\[Decimal, Decimal\] (width, height).  
+  * `color`: RGBA Tuple\[int, int, int, int\] (0-255 per channel).  
+* **Output:** `ImageArtifact` (RGBA mode).  
+* **Use Case:** Creating background canvases for composite operations.
 
 ### **Group B: Transformers (Rendering)**
 
 #### **render\_svg**
 
-Converts SVG blobs into raster artifacts.
+Converts SVG blobs into raster artifacts using cairosvg.
 
 * **Inputs:**  
-  * svg\_content: BlobArtifact (The XML).  
-  * width / height: Decimal (Target raster size).  
-  * assets: Dict\[str, ImageArtifact\] (Images to inject into the SVG, replacing hrefs).  
-  * fonts: Dict\[str, BlobArtifact\] (Fonts to inject).  
-* **Security:** The renderer is sandboxed (no network access). All dependencies must be injected via assets or fonts.
+  * `svg_content`: `BlobArtifact` (the SVG XML bytes, accessed from upstream node via manifest).  
+  * `width`: Decimal (target raster width in pixels).  
+  * `height`: Decimal (target raster height in pixels).  
+* **Output:** `ImageArtifact` (RGBA mode).  
+* **Implementation:** Uses `justmyresource.render.svg_to_png()` internally.  
+* **Security:** SVG rendering is sandboxed (no network access). All dependencies must be bundled.
 
 #### **render\_text**
 
-Creates a tight-fitting "Text Pill" artifact.
+Creates a tight-fitting "Text Pill" artifact using Pillow.
 
 * **Inputs:**  
-  * text: String content.  
-  * font\_blob: BlobArtifact (Actual font file).  
-  * size: Decimal (Font size).  
-  * color: RGBA Tuple.
+  * `text`: String content to render.  
+  * `font_family`: String font family name (e.g., `"Inter"`, `"Roboto"`).  
+  * `size`: Decimal (font size in points).  
+  * `color`: RGBA Tuple\[int, int, int, int\] (0-255 per channel).  
+  * `weight`: int | None (font weight 100-900, optional).  
+  * `style`: str (font style: `"normal"` or `"italic"`, default `"normal"`).  
+* **Output:** `ImageArtifact` sized to the text bounding box (RGBA mode).  
+* **Implementation:** Uses `FontRegistry.find_font()` from JustMyType to resolve font family, then `FontInfo.load()` to get `PIL.ImageFont`, then Pillow's text rendering.  
+* **Use Case:** Rendering labels, temperatures, or other text content.
 
-#### **render\_shape**
+#### **resize**
 
-Renders primitive vector shapes directly to an ImageArtifact (wrapping Pillow/ImageDraw).
+Scales an `ImageArtifact` to target dimensions.
 
 * **Inputs:**  
-  * shape: Enum ("rect", "rounded\_rect", "ellipse", "line").  
-  * size: Tuple\[Decimal, Decimal\].  
-  * fill: RGBA Tuple (Optional).  
-  * stroke: RGBA Tuple (Optional).  
-  * stroke\_width: Decimal.  
-  * radius: Decimal (For rounded\_rect).
+  * `image`: `ImageArtifact` (accessed from upstream node via manifest).  
+  * `width`: Decimal (target width).  
+  * `height`: Decimal (target height).  
+* **Output:** `ImageArtifact` (resized, RGBA mode).  
+* **Use Case:** Scaling downloaded images or intermediate compositions to fit canvas size.
 
 ### **Group C: Composition (Combiners)**
 
@@ -136,85 +223,346 @@ Renders primitive vector shapes directly to an ImageArtifact (wrapping Pillow/Im
 Fixed-size composition engine. Stacks multiple layers onto a fixed-size canvas where each layer anchors to a previously-placed named layer.
 
 * **Inputs:**  
-  * layers: List\[LayerSpec\].
+  * `layers`: List\[LayerSpec\] (passed as plain Python list in params).
     * The first layer defines the canvas size (must have fixed dimensions).
-    * Subsequent layers reference previously-placed layers by `id` using the `anchor()` function.
-    * No special "canvas" or "background" concept - everything references named layers.
+    * Subsequent layers reference previously-placed layers by `id` using anchor specifications.
+    * No special "canvas" or "background" concept—everything references named layers.
 
-**The LayerSpec & Blend Modes:**
+**LayerSpec Structure:**
 
-class LayerSpec(TypedDict):  
-    ref: ImageArtifact  
-    id: str | None        \# Optional name, required if other layers reference this one
-    anchor: AnchorSpec     \# Position via anchor() function (see anchor() documentation below)
-    mode: str \= "normal"   \# Photoshop-style Blending: 'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'add'  
-    opacity: Decimal \= 1.0
+Each `LayerSpec` is a dict with:
+* `ref`: String node ID of upstream `ImageArtifact` (resolved from manifest).
+* `id`: str | None (optional name, required if other layers reference this one).
+* `anchor`: dict (anchor specification, see below).
+* `mode`: str (blend mode: `"normal"`, `"multiply"`, `"screen"`, `"overlay"`, `"darken"`, `"lighten"`, `"add"`, default `"normal"`).  
+* `opacity`: Decimal (0.0 to 1.0, default 1.0).
 
-**The `anchor()` Function:**
+**Anchor Specification:**
 
-Positions a layer relative to a previously-placed named layer.
+The `anchor` dict positions a layer relative to a previously-placed named layer:
 
-**Note:** `anchor()` is an invariant_gfx DSL helper function (not an Invariant primitive). It returns an `AnchorSpec` object that is used in the `composite` op's LayerSpec.
+* **Fixed positioning (first layer):**
+  ```python
+  {"type": "fixed", "x": Decimal("0"), "y": Decimal("0")}
+  ```
 
-* **Syntax**: `anchor(layer_id, 'self_align,ref_align', x=offset, y=offset)`
-* **Parameters**:
-  * `layer_id`: String ID of a previously-placed layer (mandatory - no canvas concept)
-  * `alignment`: Comma-separated pair using `s` (start), `c` (center), `e` (end)
-    * First value = self alignment (which point on *this* layer)
-    * Second value = reference alignment (which point on the *referenced* layer)
-    * Examples:
-      * `'c,c'` = center of self aligns to center of reference (centered)
-      * `'s,e'` = start of self aligns to end of reference (outside placement / badge)
-      * `'e,e'` = end of self aligns to end of reference (right/bottom aligned)
-      * `'se,ee'` = on x-axis: self-start to ref-end; on y-axis: self-end to ref-end (text following on same baseline)
-  * `x`, `y`: Optional Decimal pixel offsets applied after alignment
+* **Relative positioning (subsequent layers):**
+  ```python
+  {
+      "type": "relative",
+      "target": "layer_id",  # ID of previously-placed layer
+      "align": "c,c",  # Alignment string (see below)
+      "x": Decimal("0"),  # Optional offset
+      "y": Decimal("0"),  # Optional offset
+  }
+  ```
 
-**Examples**:
-* `anchor('bg', 'c,c')` - center element on 'bg' layer
-* `anchor('bg', 'e,e')` - bottom-right align to 'bg' layer
-* `anchor('bg', 'c,c', y=5)` - center on 'bg', shifted 5px down
-* `anchor('text1', 'se,ee', x=5)` - place immediately after 'text1' on the same baseline with 5px gap
+**Alignment String Format:**
+
+Comma-separated pair using `s` (start), `c` (center), `e` (end):
+* First value = self alignment (which point on *this* layer)
+* Second value = reference alignment (which point on the *referenced* layer)
+* Examples:
+  * `"c,c"` = center of self aligns to center of reference (centered)
+  * `"s,e"` = start of self aligns to end of reference (outside placement / badge)
+  * `"e,e"` = end of self aligns to end of reference (right/bottom aligned)
+  * `"se,ee"` = on x-axis: self-start to ref-end; on y-axis: self-end to ref-end (text following on same baseline)
+
+**Examples:**
+* `{"type": "relative", "target": "bg", "align": "c,c"}` - center element on 'bg' layer
+* `{"type": "relative", "target": "bg", "align": "e,e"}` - bottom-right align to 'bg' layer
+* `{"type": "relative", "target": "bg", "align": "c,c", "y": Decimal("5")}` - center on 'bg', shifted 5px down
 
 #### **layout**
 
 Content-sized arrangement engine. Arranges items in a flow (row or column) when the output size is not known upfront.
 
 * **Inputs:**  
-  * direction: `"row"` or `"column"` (main axis flow direction)
-  * align: Cross-axis alignment using `s` (start), `c` (center), or `e` (end)
-  * gap: Decimal spacing between items
-  * items: Ordered list of ImageArtifact references
-* **Output**: ImageArtifact sized to the tight bounding box of the arranged items
-* **Key difference from composite**: No anchoring to named layers; items flow sequentially. Output size is derived from content, not fixed.
+  * `direction`: `"row"` or `"column"` (main axis flow direction).  
+  * `align`: Cross-axis alignment using `"s"` (start), `"c"` (center), or `"e"` (end).  
+  * `gap`: Decimal (spacing between items in pixels).  
+  * `items`: List\[str\] (ordered list of upstream node IDs that produce `ImageArtifact`s).  
+* **Output**: `ImageArtifact` sized to the tight bounding box of the arranged items (RGBA mode).  
+* **Key difference from composite**: No anchoring to named layers; items flow sequentially. Output size is derived from content, not fixed.  
+* **Use Case:** Arranging icon + text vertically, or multiple elements horizontally before compositing onto a fixed-size background.
 
 ### **Group D: Type Conversion (Casting)**
 
-Ops that transform raw data into usable artifacts without changing the visual content.
-
 #### **blob\_to\_image**
 
-Parses raw binary data (PNG, JPEG, WEBP) into a decoded ImageArtifact.
+Parses raw binary data (PNG, JPEG, WEBP) into a decoded `ImageArtifact`.
 
 * **Inputs:**  
-  * blob: BlobArtifact (The raw bytes).  
-* **Output:** ImageArtifact.  
-* **Purpose:** Allows a downloaded raster image to be used in composite (which requires dimensions) or as an asset in render\_svg.
+  * `blob`: `BlobArtifact` (accessed from upstream node via manifest).  
+* **Output:** `ImageArtifact` (RGBA mode).  
+* **Purpose:** Allows downloaded raster images (from `fetch_resource` or external sources) to be used in composite (which requires dimensions) or as assets in render\_svg.  
+* **Use Case:** Converting downloaded PNG/JPEG images into compositable artifacts.
+
+### **Deferred Ops (Post-V1)**
+
+The following ops are planned but not required for v1:
+
+* **fetch\_resource**: HTTP download with version-based caching (for external assets).
+* **render\_shape**: Primitive vector shapes (rect, rounded\_rect, ellipse, line) rendered directly to `ImageArtifact`.
 
 ## **5\. Missing Upstream Features (Gaps in Invariant)**
 
-The following features are needed by invariant_gfx but are **not yet implemented** in Invariant. These gaps should be clearly understood when working with the architecture:
+After reviewing the actual Invariant codebase, here is the accurate status of features needed by invariant_gfx:
 
-| Feature | Description | Impact on invariant_gfx |
+| Feature | Doc Says Missing | Actual Status |
 | :---- | :---- | :---- |
-| **Expression Evaluation** | `${...}` template syntax in Node params (e.g., `${input.background}`, `${Decimal(input.width) * Decimal('0.8')}`) | Currently cannot reference upstream artifacts or external context in params. Workaround: Use identity nodes or literal values. |
-| **Context Injection** | External input data passed to graph execution (e.g., `pipeline.render(graph, context={"input": render_input})`) | Currently cannot inject external data. Workaround: Use identity nodes at graph root. |
-| **Pipeline Class** | Ergonomic wrapper around Executor with context support | Currently must use Executor directly. Workaround: Implement Pipeline wrapper in invariant_gfx (may later move to invariant core). |
-| **List/Dict Cacheable Types** | Composite data structures implementing ICacheable | Currently cannot pass lists/dicts of artifacts in params. Workaround: Pending implementation. |
-| **Op Namespace Enforcement** | Formal `namespace:op_name` convention with validation | Currently OpRegistry accepts any string but has no namespace validation. Workaround: Manual convention enforcement. |
+| **Expression Evaluation** (`${...}`) | Missing | **Not needed for v1.** The Executor already populates the manifest with upstream artifacts keyed by dep node ID. Ops access upstream results directly from the manifest (e.g., `manifest["upstream_node_id"]`). No template syntax required. |
+| **Context Injection** | Missing | **Solvable via Pipeline wrapper.** The Pipeline class (to be implemented in invariant_gfx) can accept a context dict and auto-create identity nodes at the graph root. This provides the ergonomic API without requiring changes to Invariant core. |
+| **Pipeline Class** | Missing | **To be implemented in invariant_gfx.** Wraps Executor with context support and dual-cache (MemoryStore + DiskStore). See Section 7 for design. |
+| **List/Dict Cacheable Types** | Missing | **Partially available.** `hash_value()` in Invariant already hashes lists/dicts recursively. However, `List` and `Dict` as top-level `ICacheable` types (with `to_stream`/`from_stream`) do not exist. **Workaround for v1:** Pass layer specs as plain Python dicts/lists in params. The manifest hashing will work, but these cannot be stored as standalone artifacts. For v1, this is acceptable since layer specs are only intermediate data. |
+| **Op Namespace Enforcement** | Missing | **Not needed for v1.** Convention-based namespacing (core ops use bare names, extensions use `namespace:op_name`) is sufficient. Manual enforcement via code review is acceptable. |
 
-**Current Status:** The example in Section 6 shows the intended API with expression evaluation and context injection, but these features are marked with TODO comments indicating they are not yet available.
+**V1 Approach:** The Pipeline wrapper handles context injection. Ops access upstream artifacts via manifest keys (dep node IDs). Layer specs are passed as plain dicts/lists (not as ICacheable artifacts) since they're only used in manifests, not stored independently.
 
-## **6\. Pipeline Example: The Thermometer**
+## **6\. Dependency Integration**
+
+invariant_gfx integrates with two key dependencies for resource discovery:
+
+### **Font Resolution (JustMyType)**
+
+The `render_text` op uses JustMyType's `FontRegistry` to resolve font family names to actual font files:
+
+* **Input:** Font family name as a string (e.g., `"Inter"`, `"Roboto"`)
+* **Resolution:** `FontRegistry.find_font(family, weight, style, width)` returns a `FontInfo` object
+* **Loading:** `FontInfo.load(size)` produces a `PIL.ImageFont.FreeTypeFont` for Pillow text rendering
+* **Location:** Font resolution happens **inside** the op; the graph passes only the font family name string (not a font blob)
+
+This design keeps the graph declarative—nodes specify "use Inter font" rather than managing font file paths.
+
+### **Icon/Resource Resolution (JustMyResource)**
+
+The `resolve_resource` op wraps JustMyResource's `ResourceRegistry` to fetch bundled icons and other resources:
+
+* **Input:** Resource identifier with optional pack prefix (e.g., `"lucide:thermometer"`, `"material-icons:cloud"`)
+* **Resolution:** `ResourceRegistry.get_resource(name)` returns a `ResourceContent` object containing:
+  * `data: bytes` (raw SVG or raster bytes)
+  * `content_type: str` (MIME type, e.g., `"image/svg+xml"`, `"image/png"`)
+  * `encoding: str | None` (for text-based resources)
+  * `metadata: dict | None` (optional pack-specific info)
+* **Output:** A `BlobArtifact` containing the resource bytes
+* **Rasterization:** The `render_svg` op then converts SVG blobs to `ImageArtifact` using cairosvg (via JustMyResource's `render.svg_to_png()` helper)
+
+**Icon Pack Discovery:** Icon packs (Lucide, Material Icons, etc.) are installed via `justmyresource[icons]` and discovered automatically via Python EntryPoints. No URL fetching is needed for bundled icons—they're resolved from installed packages.
+
+**Note:** The `fetch_resource` op (for external HTTP URLs) remains available for downloading remote assets, but bundled icons should use `resolve_resource` for better performance and determinism.
+
+## **7\. Pipeline Class Design**
+
+The `Pipeline` class is an ergonomic wrapper around Invariant's `Executor` that provides:
+
+1. **Context Injection:** Automatically creates identity nodes from a context dict
+2. **Dual-Cache Strategy:** ChainStore combining MemoryStore (session-scoped) and DiskStore (persistent)
+3. **Simplified API:** Single `render()` method that takes a graph template and context
+
+### **API Design**
+
+```python
+from invariant_gfx import Pipeline
+from invariant import Node
+from invariant_gfx.artifacts import ImageArtifact
+
+pipeline = Pipeline()  # Uses ChainStore(MemoryStore(), DiskStore()) by default
+
+# Render a template with context
+result: ImageArtifact = pipeline.render(
+    graph=my_template_graph,
+    context={
+        "size": {"width": 72, "height": 72},
+        "icon": "lucide:thermometer",
+        "temperature": "22.5°C",
+    },
+    output="final",  # Node ID to return
+)
+```
+
+### **Dual-Cache Strategy: ChainStore**
+
+The `ChainStore` (to be implemented) provides a two-tier caching system:
+
+* **MemoryStore (L1):** Fast, session-scoped cache. Checked first for hot-path performance (same template rendered with different contexts).
+* **DiskStore (L2):** Persistent filesystem cache. Checked if MemoryStore misses. Promotes artifacts to MemoryStore on hit.
+
+This design optimizes for the common v1 use case: rendering the same template multiple times with different context values (e.g., generating 15 Stream Deck buttons from one template).
+
+### **Context Injection Mechanism**
+
+When `Pipeline.render()` is called with a `context` dict:
+
+1. The Pipeline creates an identity node (e.g., `"context"`) with `params={"value": context}`
+2. The context dict is wrapped in an `ICacheable` container (e.g., a `Dict` type, or for v1, a simple wrapper)
+3. The graph is augmented with this context node
+4. Other nodes can depend on `"context"` and access values via the manifest
+
+For v1, since `Dict` as an `ICacheable` type doesn't exist, the context will be stored as a plain dict in the identity node's params. The manifest hashing will still work correctly.
+
+## **8\. Template + Context Rendering Pattern**
+
+The v1 key deliverable is: **design a pipeline template, then provide context (including size) to render a version**.
+
+A **template** is a graph dict with a context identity node at its root. The Pipeline's `render()` method injects the context values and executes:
+
+```mermaid
+flowchart LR
+    subgraph template [Graph Template]
+        direction TB
+        CTX["context\n(identity node)"]
+        ICON["resolve_resource"]
+        TEXT["render_text"]
+        BG["create_solid"]
+        COMP["composite"]
+        CTX --> ICON
+        CTX --> TEXT
+        CTX --> BG
+        ICON --> COMP
+        TEXT --> COMP
+        BG --> COMP
+    end
+    
+    subgraph render [Render Calls]
+        C1["context1 = size:72x72\nicon: lucide:thermometer\ntemp: 22.5C"]
+        C2["context2 = size:72x72\nicon: lucide:cloud\ntemp: 18.0C"]
+    end
+    
+    C1 -->|"pipeline.render(template, context1)"| template
+    C2 -->|"pipeline.render(template, context2)"| template
+```
+
+**Benefits:**
+- Same template reused across multiple renders (caching at template level)
+- Context values change per render (different icons, text, sizes)
+- Hot-path optimization: MemoryStore caches intermediate artifacts from the template structure
+- Deterministic: Same context always produces the same output (bit-for-bit identical)
+
+## **9\. Pipeline Example: The Thermometer**
+
+This example demonstrates the **template + context** pattern: a graph template that accepts context (size, icon, temperature) and renders a Stream Deck button.
+
+```python
+from invariant import Node
+from invariant_gfx import Pipeline
+from invariant_gfx.artifacts import ImageArtifact, BlobArtifact
+from decimal import Decimal
+
+# Define the template graph
+template = {
+    # Context node (will be injected by Pipeline.render())
+    "context": Node(
+        op_name="identity",
+        params={"value": {}},  # Placeholder - Pipeline will inject actual context
+        deps=[],
+    ),
+    
+    # Resolve icon resource
+    "icon_blob": Node(
+        op_name="resolve_resource",
+        params={
+            "name": "lucide:thermometer",  # Will be overridden by context
+        },
+        deps=["context"],
+    ),
+    
+    # Render icon SVG to raster
+    "icon": Node(
+        op_name="render_svg",
+        params={
+            "svg_content": None,  # Will be populated from icon_blob artifact
+            "width": Decimal("50"),
+            "height": Decimal("50"),
+        },
+        deps=["icon_blob"],
+    ),
+    
+    # Render temperature text
+    "text": Node(
+        op_name="render_text",
+        params={
+            "text": "22.5°C",  # Will be overridden by context
+            "font_family": "Inter",
+            "size": Decimal("12"),
+            "color": (255, 255, 255, 255),  # White RGBA
+        },
+        deps=["context"],
+    ),
+    
+    # Create background
+    "background": Node(
+        op_name="create_solid",
+        params={
+            "size": (Decimal("72"), Decimal("72")),  # Will be overridden by context
+            "color": (40, 40, 40, 255),  # Dark gray RGBA
+        },
+        deps=["context"],
+    ),
+    
+    # Layout icon and text vertically
+    "content": Node(
+        op_name="layout",
+        params={
+            "direction": "column",
+            "align": "c",
+            "gap": Decimal("5"),
+            "items": ["icon", "text"],  # References to upstream node IDs
+        },
+        deps=["icon", "text"],
+    ),
+    
+    # Composite onto background
+    "final": Node(
+        op_name="composite",
+        params={
+            "layers": [
+                {
+                    "ref": "background",  # Reference to upstream node ID
+                    "id": "bg",
+                    "anchor": {"type": "fixed", "x": 0, "y": 0},  # First layer defines canvas
+                },
+                {
+                    "ref": "content",
+                    "id": "content_layer",
+                    "anchor": {"type": "relative", "target": "bg", "align": "c,c"},  # Center on bg
+                },
+            ],
+        },
+        deps=["background", "content"],
+    ),
+}
+
+# Initialize pipeline
+pipeline = Pipeline()
+
+# Render with different contexts
+result1: ImageArtifact = pipeline.render(
+    graph=template,
+    context={
+        "size": {"width": 72, "height": 72},
+        "icon": "lucide:thermometer",
+        "temperature": "22.5°C",
+    },
+    output="final",
+)
+
+result2: ImageArtifact = pipeline.render(
+    graph=template,
+    context={
+        "size": {"width": 72, "height": 72},
+        "icon": "lucide:cloud",
+        "temperature": "18.0°C",
+    },
+    output="final",
+)
+```
+
+**Note:** The actual implementation will need to:
+- Extract context values inside ops (e.g., `render_text` reads `context["temperature"]` from the manifest)
+- Resolve upstream artifacts from manifest keys (e.g., `manifest["icon_blob"]` returns the `BlobArtifact`)
+- Handle the anchor system for `composite` (simplified in this example)
+
+This example shows the intended API pattern; the actual op implementations will handle manifest resolution internally.
 
 This example demonstrates the **layout** and **composite** ops working together: `layout` arranges content-sized elements, then `composite` places the result onto a fixed-size background.
 
