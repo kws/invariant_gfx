@@ -9,7 +9,9 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "invariant @ file:///Users/kws/work/invariant"
+    "invariant @ file:///Users/kws/work/invariant",
+    "justmytype (>=0.3.0,<0.4.0)",
+    "justmyresource[icons] (>=1.1.1,<2.0.0)"
 ]
 
 [tool.poetry]
