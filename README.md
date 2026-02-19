@@ -11,7 +11,7 @@ Unlike traditional imperative rendering (where you draw lines on a mutable canva
 - **Reproducibility**: Bit-for-bit identical outputs across runs and architectures
 - **Functional Rendering**: Immutable artifacts flow through pure function operations
 - **Smart Layout**: Ops can inspect upstream artifact dimensions to calculate positions dynamically
-- **Anchor-Based Composition**: Position layers relative to previously-placed named layers
+- **Anchor-Based Composition**: Position layers relative to previously-placed named layers using `absolute()` and `relative()` builder functions
 - **Content-Sized Layout**: Flow-based arrangement (row/column) with automatic sizing
 
 ## Relationship to Invariant
@@ -19,27 +19,30 @@ Unlike traditional imperative rendering (where you draw lines on a mutable canva
 invariant_gfx is a **child project** of Invariant:
 
 - **Invariant (Parent)**: Provides the DAG execution engine, caching infrastructure, and core protocols. Invariant has **NO image awareness**—it is domain-agnostic.
-- **invariant_gfx (Child)**: Provides graphics-specific Ops (render_text, composite, render_svg) and Artifacts (ImageArtifact, BlobArtifact). All image/Pillow concerns live here.
+- **invariant_gfx (Child)**: Provides graphics-specific Ops (`gfx:render_text`, `gfx:composite`, `gfx:render_svg`, etc.) and Artifacts (`ImageArtifact`, `BlobArtifact`). All image/Pillow concerns live here.
+
+invariant_gfx uses Invariant's `Executor` and store infrastructure directly—no wrapper class is needed.
 
 ## Op Standard Library
 
-invariant_gfx provides a standard library of graphics operations organized into four groups:
+invariant_gfx provides a standard library of graphics operations, registered under the `gfx:` namespace:
 
 ### Group A: Sources (Data Ingestion)
-- `fetch_resource`: Downloads external assets (images, fonts, SVGs) with version-based caching
-- `create_solid`: Generates solid color or gradient textures
+- `gfx:resolve_resource`: Resolves bundled resources (icons, images) via JustMyResource (e.g., `"lucide:thermometer"`)
+- `gfx:create_solid`: Generates solid color canvases (RGBA)
+- `gfx:resolve_font`: Resolves font family names to font file bytes via JustMyType *(deferred — `gfx:render_text` handles font resolution implicitly)*
 
 ### Group B: Transformers (Rendering)
-- `render_svg`: Converts SVG blobs into raster artifacts (sandboxed, no network access)
-- `render_text`: Creates tight-fitting "Text Pill" artifacts
-- `render_shape`: Renders primitive vector shapes (rect, rounded_rect, ellipse, line)
+- `gfx:render_svg`: Converts SVG blobs into raster artifacts using cairosvg
+- `gfx:render_text`: Creates tight-fitting "Text Pill" artifacts (supports string font names via JustMyType and direct `BlobArtifact` font injection)
+- `gfx:resize`: Scales an `ImageArtifact` to target dimensions (LANCZOS resampling)
 
 ### Group C: Composition (Combiners)
-- `composite`: Fixed-size composition engine with anchor-based positioning
-- `layout`: Content-sized arrangement engine (row/column flow)
+- `gfx:composite`: Fixed-size composition engine with anchor-based positioning (`absolute()`, `relative()`)
+- `gfx:layout`: Content-sized arrangement engine (row/column flow)
 
 ### Group D: Type Conversion (Casting)
-- `blob_to_image`: Parses raw binary data (PNG, JPEG, WEBP) into ImageArtifact
+- `gfx:blob_to_image`: Parses raw binary data (PNG, JPEG, WEBP) into `ImageArtifact`
 
 For detailed Op specifications, see [docs/architecture.md](docs/architecture.md).
 
@@ -59,71 +62,86 @@ poetry install
 ## Quick Start
 
 ```python
-from invariant import Node
-from invariant_gfx import Pipeline  # Pipeline wrapper (may move to invariant core in future)
 from decimal import Decimal
 
-# Define render input
-render_input = {
-    "font": "Inter",
-    "icon": "lucide:thermometer",
-    "background": "http://example.com/someimage.jpg",
-    "temperature": "23.5",
-    "height": 122,
-    "width": 122,
-}
+from invariant import Executor, Node
+from invariant.registry import OpRegistry
+from invariant.store.memory import MemoryStore
 
-# Build the graph
+from invariant_gfx import register_core_ops
+from invariant_gfx.anchors import absolute, relative
+
+# Register graphics ops
+registry = OpRegistry()
+register_core_ops(registry)  # Registers gfx:* ops
+
+# Define the graph
 graph = {
-    "input": Node(
-        op_name="identity",
-        params={"value": render_input},
-        deps=[]
-    ),
-    
-    "background_image": Node(
-        op_name="fetch_resource",
+    # Render text
+    "text": Node(
+        op_name="gfx:render_text",
         params={
-            "url": render_input["background"],
-            "version": 1,
+            "text": "Hello",
+            "font": "Geneva",
+            "size": Decimal("14"),
+            "color": (255, 255, 255, 255),  # White RGBA
         },
-        deps=["input"]
+        deps=[],
     ),
-    
-    "text_render": Node(
-        op_name="render_text",
+    # Create background
+    "background": Node(
+        op_name="gfx:create_solid",
         params={
-            "text": render_input["temperature"],
-            "font": "Inter",
-            "size": Decimal("11.5"),
-            "color": "#FFF"
+            "size": (Decimal("72"), Decimal("72")),
+            "color": (40, 40, 40, 255),  # Dark gray RGBA
         },
-        deps=["input"]
+        deps=[],
     ),
-    
-    # ... more nodes for composition ...
+    # Composite: center text on background
+    "final": Node(
+        op_name="gfx:composite",
+        params={
+            "layers": {
+                "background": absolute(0, 0),  # First layer defines canvas
+                "text": relative("background", "c,c"),  # Center on background
+            },
+        },
+        deps=["background", "text"],
+    ),
 }
 
-# Execute the pipeline
-pipeline = Pipeline(decimal_prec=2)
-artifacts = pipeline.executor.execute(graph)
-final_image = artifacts["final"]
+# Execute the graph
+store = MemoryStore()
+executor = Executor(registry=registry, store=store)
+results = executor.execute(graph)
+
+# Access result
+final_image = results["final"].image  # PIL.Image (RGBA)
+final_image.save("output.png", format="PNG")
 ```
 
-For a complete example, see the Thermometer pipeline in [docs/architecture.md](docs/architecture.md).
+For more complete examples, see:
+- `examples/thermometer_button.py` — Icon + text + layout + composite pipeline
+- `examples/text_badge.py` — Dynamic SVG resizing driven by text dimensions
+- `examples/color_dashboard.py` — Multi-cell dashboard with nested layouts
+
+For the full Thermometer pipeline and template + context pattern, see [docs/architecture.md](docs/architecture.md).
 
 ## Status
 
 **Architecture**: Complete and documented
 
-**Implementation**: In progress
-- Op standard library specification: ✅ Complete
-- Artifact types (ImageArtifact, BlobArtifact): ⏳ Pending
-- Composite and layout algorithms: ✅ Designed
-- anchor() DSL helper: ✅ Designed
-- Actual Op implementations: ⏳ Pending
-- Pipeline wrapper class: ⏳ Pending
-- Integration with JustMyType/JustMyResource: ⏳ Pending
+**Implementation**: V1 op library complete
+- Artifact types (`ImageArtifact`, `BlobArtifact`): ✅ Implemented
+- Anchor functions (`absolute()`, `relative()`): ✅ Implemented
+- Op standard library (8 ops): ✅ Implemented
+- `register_core_ops()` registration: ✅ Implemented
+- Integration with JustMyType/JustMyResource: ✅ Implemented
+- Unit tests (94 tests): ✅ All passing
+- E2E tests (Use Cases 1 & 2): ✅ Passing
+- E2E context injection (Use Case 3): ⏳ Placeholder
+
+See [docs/status.md](docs/status.md) for detailed implementation status.
 
 ## Architecture
 
@@ -152,4 +170,3 @@ poetry run ruff format src/ tests/
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
