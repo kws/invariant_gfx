@@ -1,6 +1,6 @@
 """gfx:gaussian_blur operation - applies Gaussian blur to an image."""
 
-from decimal import ROUND_CEILING, Decimal
+from decimal import Decimal
 
 from PIL import ImageFilter
 
@@ -12,7 +12,7 @@ def gaussian_blur(
     image: ImageArtifact,
     sigma: Decimal | int | str,
 ) -> ICacheable:
-    """Apply Gaussian blur. Deterministic: radius = ceil(3 * sigma).
+    """Apply Gaussian blur. Pillow's radius parameter is standard deviation (sigma).
 
     Args:
         image: ImageArtifact (source image).
@@ -37,9 +37,6 @@ def gaussian_blur(
     if sigma_dec < 0:
         raise ValueError(f"sigma must be non-negative, got {sigma_dec!r}")
 
-    # Deterministic radius using Decimal only (no float)
-    radius_dec = (Decimal("3") * sigma_dec).to_integral_value(rounding=ROUND_CEILING)
-    radius_int = int(radius_dec)
-
-    out = image.image.filter(ImageFilter.GaussianBlur(radius=radius_int))
+    # Pillow's GaussianBlur(radius=...) is standard deviation; pass sigma directly.
+    out = image.image.filter(ImageFilter.GaussianBlur(radius=float(sigma_dec)))
     return ImageArtifact(out)

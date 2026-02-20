@@ -107,8 +107,7 @@ Applies Gaussian blur to an image.
   * `image`: `ImageArtifact` (source image).
   * `sigma`: `Decimal` (blur radius / standard deviation).
 * **Output:** `ImageArtifact` — blurred result.
-* **Implementation:** Pillow `GaussianBlur` with explicit `radius = ceil(3 * sigma)`. The radius calculation is documented and deterministic — no library-default "auto" behavior.
-* **Determinism:** Kernel size is always `2 * ceil(3 * sigma) + 1`. This formula is part of the op's contract.
+* **Implementation:** Pillow `GaussianBlur(radius=...)` — the `radius` parameter is Pillow's name for standard deviation; we pass `sigma` directly. Effective kernel half-size is `ceil(3 * sigma)`; kernel size is `2 * ceil(3 * sigma) + 1`. Deterministic, no library-default "auto" behavior.
 * **Use Case:** Softening shadows, creating glow falloff.
 
 ### **Geometric Primitives**
