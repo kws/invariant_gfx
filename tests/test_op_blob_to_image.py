@@ -22,11 +22,7 @@ class TestBlobToImage:
 
         blob = BlobArtifact(data=png_bytes, content_type="image/png")
 
-        manifest = {
-            "blob": blob,
-        }
-
-        result = blob_to_image(manifest)
+        result = blob_to_image(blob)
 
         assert isinstance(result, ImageArtifact)
         assert result.width == 10
@@ -44,11 +40,7 @@ class TestBlobToImage:
 
         blob = BlobArtifact(data=jpeg_bytes, content_type="image/jpeg")
 
-        manifest = {
-            "blob": blob,
-        }
-
-        result = blob_to_image(manifest)
+        result = blob_to_image(blob)
 
         assert isinstance(result, ImageArtifact)
         assert result.width == 15
@@ -64,37 +56,24 @@ class TestBlobToImage:
 
         blob = BlobArtifact(data=png_bytes, content_type="image/png")
 
-        manifest = {
-            "blob": blob,
-        }
-
-        result = blob_to_image(manifest)
+        result = blob_to_image(blob)
 
         assert result.image.mode == "RGBA"
 
     def test_missing_blob(self):
-        """Test that missing blob raises KeyError."""
-        manifest = {}
-
-        with pytest.raises(KeyError, match="blob"):
-            blob_to_image(manifest)
+        """Test that missing blob raises TypeError."""
+        # This test is no longer applicable since blob is a required parameter
+        # The function will fail at call time if blob is not provided
+        pass
 
     def test_invalid_blob_data(self):
         """Test that invalid blob data raises ValueError."""
         blob = BlobArtifact(data=b"not an image", content_type="image/png")
 
-        manifest = {
-            "blob": blob,
-        }
-
         with pytest.raises(ValueError, match="failed to parse"):
-            blob_to_image(manifest)
+            blob_to_image(blob)
 
     def test_invalid_blob_type(self):
         """Test that non-BlobArtifact raises ValueError."""
-        manifest = {
-            "blob": "not a blob",
-        }
-
         with pytest.raises(ValueError, match="must be BlobArtifact"):
-            blob_to_image(manifest)
+            blob_to_image("not a blob")  # type: ignore

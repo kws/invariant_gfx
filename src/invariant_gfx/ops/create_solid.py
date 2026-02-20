@@ -1,7 +1,6 @@
 """gfx:create_solid operation - generates a solid color canvas."""
 
 from decimal import Decimal
-from typing import Any
 
 from PIL import Image
 
@@ -9,29 +8,22 @@ from invariant.protocol import ICacheable
 from invariant_gfx.artifacts import ImageArtifact
 
 
-def create_solid(manifest: dict[str, Any]) -> ICacheable:
+def create_solid(
+    size: tuple[Decimal | int | str, Decimal | int | str],
+    color: tuple[int, int, int, int],
+) -> ICacheable:
     """Generate a solid color canvas.
 
     Args:
-        manifest: Must contain:
-            - 'size': Tuple[Decimal, Decimal] (width, height)
-            - 'color': Tuple[int, int, int, int] (RGBA, 0-255 per channel)
+        size: Tuple[Decimal | int | str, Decimal | int | str] (width, height)
+        color: Tuple[int, int, int, int] (RGBA, 0-255 per channel)
 
     Returns:
         ImageArtifact with the solid color canvas (RGBA mode).
 
     Raises:
-        KeyError: If required keys are missing.
         ValueError: If size or color values are invalid.
     """
-    if "size" not in manifest:
-        raise KeyError("gfx:create_solid requires 'size' in manifest")
-    if "color" not in manifest:
-        raise KeyError("gfx:create_solid requires 'color' in manifest")
-
-    size = manifest["size"]
-    color = manifest["color"]
-
     # Validate and convert size
     if not isinstance(size, (tuple, list)) or len(size) != 2:
         raise ValueError(f"size must be a tuple/list of 2 values, got {type(size)}")

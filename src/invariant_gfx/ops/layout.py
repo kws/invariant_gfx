@@ -1,7 +1,6 @@
 """gfx:layout operation - content-sized arrangement engine (row/column flow)."""
 
 from decimal import Decimal
-from typing import Any
 
 from PIL import Image
 
@@ -9,38 +8,26 @@ from invariant.protocol import ICacheable
 from invariant_gfx.artifacts import ImageArtifact
 
 
-def layout(manifest: dict[str, Any]) -> ICacheable:
+def layout(
+    direction: str,
+    align: str,
+    gap: Decimal | int | str,
+    items: list[ImageArtifact],
+) -> ICacheable:
     """Arrange items in a flow (row or column) with content-sized output.
 
     Args:
-        manifest: Must contain:
-            - 'direction': "row" or "column" (main axis flow direction)
-            - 'align': "s", "c", or "e" (cross-axis alignment)
-            - 'gap': Decimal (spacing between items in pixels)
-            - 'items': List[str] (ordered list of upstream node IDs)
-            - Artifacts for each item ID (as ImageArtifact)
+        direction: "row" or "column" (main axis flow direction)
+        align: "s", "c", or "e" (cross-axis alignment)
+        gap: Decimal | int | str (spacing between items in pixels)
+        items: list[ImageArtifact] (ordered list of images to arrange)
 
     Returns:
         ImageArtifact sized to the tight bounding box of arranged items (RGBA mode).
 
     Raises:
-        KeyError: If required keys are missing.
-        ValueError: If direction/align values are invalid or items cannot be found.
+        ValueError: If direction/align values are invalid, gap is negative, or items is empty.
     """
-    if "direction" not in manifest:
-        raise KeyError("gfx:layout requires 'direction' in manifest")
-    if "align" not in manifest:
-        raise KeyError("gfx:layout requires 'align' in manifest")
-    if "gap" not in manifest:
-        raise KeyError("gfx:layout requires 'gap' in manifest")
-    if "items" not in manifest:
-        raise KeyError("gfx:layout requires 'items' in manifest")
-
-    direction = manifest["direction"]
-    align = manifest["align"]
-    gap_val = manifest["gap"]
-    items = manifest["items"]
-
     # Validate direction
     if direction not in ("row", "column"):
         raise ValueError(f"direction must be 'row' or 'column', got '{direction}'")
@@ -50,15 +37,15 @@ def layout(manifest: dict[str, Any]) -> ICacheable:
         raise ValueError(f"align must be 's', 'c', or 'e', got '{align}'")
 
     # Convert gap to int
-    if isinstance(gap_val, Decimal):
-        gap = int(gap_val)
-    elif isinstance(gap_val, (int, str)):
-        gap = int(gap_val)
+    if isinstance(gap, Decimal):
+        gap_int = int(gap)
+    elif isinstance(gap, (int, str)):
+        gap_int = int(gap)
     else:
-        raise ValueError(f"gap must be Decimal, int, or str, got {type(gap_val)}")
+        raise ValueError(f"gap must be Decimal, int, or str, got {type(gap)}")
 
-    if gap < 0:
-        raise ValueError(f"gap must be non-negative, got {gap}")
+    if gap_int < 0:
+        raise ValueError(f"gap must be non-negative, got {gap_int}")
 
     # Validate items
     if not isinstance(items, list):
@@ -67,39 +54,24 @@ def layout(manifest: dict[str, Any]) -> ICacheable:
     if len(items) == 0:
         raise ValueError("items must contain at least one item")
 
-    # Extract artifacts for each item
-    artifacts: list[ImageArtifact] = []
-    for item_id in items:
-        if not isinstance(item_id, str):
-            raise ValueError(f"item ID must be a string, got {type(item_id)}")
-
-        if item_id not in manifest:
-            raise KeyError(
-                f"Item '{item_id}' not found in manifest. "
-                f"Make sure it's listed in node.deps."
-            )
-
-        artifact = manifest[item_id]
-        if not isinstance(artifact, ImageArtifact):
-            raise ValueError(
-                f"Item '{item_id}' must be ImageArtifact, got {type(artifact)}"
-            )
-
-        artifacts.append(artifact)
+    # Validate all items are ImageArtifact
+    for i, item in enumerate(items):
+        if not isinstance(item, ImageArtifact):
+            raise ValueError(f"items[{i}] must be ImageArtifact, got {type(item)}")
 
     # Calculate layout dimensions
     if direction == "row":
         # Main axis: horizontal
         # Width = sum of item widths + gaps between items
-        total_width = sum(art.width for art in artifacts) + gap * (len(artifacts) - 1)
+        total_width = sum(item.width for item in items) + gap_int * (len(items) - 1)
         # Height = max of item heights
-        total_height = max(art.height for art in artifacts) if artifacts else 0
+        total_height = max(item.height for item in items) if items else 0
     else:  # column
         # Main axis: vertical
         # Width = max of item widths
-        total_width = max(art.width for art in artifacts) if artifacts else 0
+        total_width = max(item.width for item in items) if items else 0
         # Height = sum of item heights + gaps between items
-        total_height = sum(art.height for art in artifacts) + gap * (len(artifacts) - 1)
+        total_height = sum(item.height for item in items) + gap_int * (len(items) - 1)
 
     if total_width <= 0 or total_height <= 0:
         raise ValueError(
@@ -114,37 +86,37 @@ def layout(manifest: dict[str, Any]) -> ICacheable:
     if direction == "row":
         # Horizontal arrangement
         x = 0
-        for artifact in artifacts:
+        for item in items:
             # Calculate y position based on cross-axis alignment
             if align == "s":
                 y = 0
             elif align == "c":
-                y = (total_height - artifact.height) // 2
+                y = (total_height - item.height) // 2
             else:  # align == "e"
-                y = total_height - artifact.height
+                y = total_height - item.height
 
             # Paste item
-            canvas.paste(artifact.image, (x, y), artifact.image)
+            canvas.paste(item.image, (x, y), item.image)
 
             # Move to next position
-            x += artifact.width + gap
+            x += item.width + gap_int
 
     else:  # column
         # Vertical arrangement
         y = 0
-        for artifact in artifacts:
+        for item in items:
             # Calculate x position based on cross-axis alignment
             if align == "s":
                 x = 0
             elif align == "c":
-                x = (total_width - artifact.width) // 2
+                x = (total_width - item.width) // 2
             else:  # align == "e"
-                x = total_width - artifact.width
+                x = total_width - item.width
 
             # Paste item
-            canvas.paste(artifact.image, (x, y), artifact.image)
+            canvas.paste(item.image, (x, y), item.image)
 
             # Move to next position
-            y += artifact.height + gap
+            y += item.height + gap_int
 
     return ImageArtifact(canvas)

@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 from io import BytesIO
-from typing import Any
 
 import cairosvg
 from PIL import Image
@@ -11,50 +10,41 @@ from invariant.protocol import ICacheable
 from invariant_gfx.artifacts import BlobArtifact, ImageArtifact
 
 
-def render_svg(manifest: dict[str, Any]) -> ICacheable:
+def render_svg(
+    svg_content: str | bytes | BlobArtifact,
+    width: Decimal | int | str,
+    height: Decimal | int | str,
+) -> ICacheable:
     """Convert SVG blobs into raster artifacts using cairosvg.
 
     Args:
-        manifest: Must contain:
-            - 'svg_content': str (inline SVG XML), bytes, or BlobArtifact
-            - 'width': Decimal (target raster width in pixels)
-            - 'height': Decimal (target raster height in pixels)
+        svg_content: str (inline SVG XML), bytes, or BlobArtifact
+        width: Decimal | int | str (target raster width in pixels)
+        height: Decimal | int | str (target raster height in pixels)
 
     Returns:
         ImageArtifact with rasterized SVG (RGBA mode).
 
     Raises:
-        KeyError: If required keys are missing.
         ValueError: If SVG cannot be rendered or dimensions are invalid.
     """
-    if "svg_content" not in manifest:
-        raise KeyError("gfx:render_svg requires 'svg_content' in manifest")
-    if "width" not in manifest:
-        raise KeyError("gfx:render_svg requires 'width' in manifest")
-    if "height" not in manifest:
-        raise KeyError("gfx:render_svg requires 'height' in manifest")
-
-    svg_content = manifest["svg_content"]
-    width_val = manifest["width"]
-    height_val = manifest["height"]
-
     # Convert to int (handles Decimal, int, or string)
-    if isinstance(width_val, Decimal):
-        width = int(width_val)
-    elif isinstance(width_val, (int, str)):
-        width = int(width_val)
+    if isinstance(width, Decimal):
+        width_int = int(width)
+    elif isinstance(width, (int, str)):
+        width_int = int(width)
     else:
-        raise ValueError(f"width must be Decimal, int, or str, got {type(width_val)}")
+        raise ValueError(f"width must be Decimal, int, or str, got {type(width)}")
 
-    if isinstance(height_val, Decimal):
-        height = int(height_val)
-    elif isinstance(height_val, (int, str)):
-        height = int(height_val)
+    if isinstance(height, Decimal):
+        height_int = int(height)
+    elif isinstance(height, (int, str)):
+        height_int = int(height)
     else:
-        raise ValueError(f"height must be Decimal, int, or str, got {type(height_val)}")
+        raise ValueError(f"height must be Decimal, int, or str, got {type(height)}")
 
-    if width <= 0 or height <= 0:
-        raise ValueError(f"size must be positive, got {width}x{height}")
+    if width_int <= 0 or height_int <= 0:
+        raise ValueError(f"size must be positive, got {width_int}x{height_int}")
 
     # Extract SVG bytes from svg_content
     if isinstance(svg_content, str):
@@ -75,8 +65,8 @@ def render_svg(manifest: dict[str, Any]) -> ICacheable:
     try:
         png_bytes = cairosvg.svg2png(
             bytestring=svg_bytes,
-            output_width=width,
-            output_height=height,
+            output_width=width_int,
+            output_height=height_int,
         )
     except Exception as e:
         raise ValueError(f"gfx:render_svg failed to render SVG: {e}") from e
