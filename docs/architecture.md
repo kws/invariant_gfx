@@ -1,6 +1,6 @@
 # **Invariant GFX: The Functional Graphics Pipeline**
 
-**Invariant GFX** is a deterministic, DAG-based graphics engine built on **Invariant**. It allows developers to build complex visual assets (like Stream Deck buttons, dynamic badges, or data visualizations) by plugging together reusable "pipeline parts."
+**Invariant GFX** is a deterministic, DAG-based graphics engine built on **Invariant**. It allows developers to build complex visual assets (like Stream Deck buttons, dynamic badges, or data visualizations) by plugging together reusable "pipeline parts." Reusable DAG fragments can be expressed as **subgraphs** — see [subgraphs.md](subgraphs.md).
 
 Unlike traditional imperative rendering (where you draw lines on a mutable canvas), Invariant GFX is **functional**: every layer, mask, or composition is an immutable **Artifact** produced by a pure function.
 
