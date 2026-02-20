@@ -242,106 +242,19 @@ Fixed-size composition engine. Stacks multiple layers onto a fixed-size canvas w
 * **Inputs:**  
   * `layers`: `dict[str, AnchorSpec]` (passed as plain Python dict in params, keyed by dependency ID).
     * Keys are the node IDs from `deps` (the upstream `ImageArtifact` dependencies).
-    * Values are anchor specifications (see Anchor Functions below).
+    * Values are anchor specifications created using `absolute()` or `relative()` builder functions.
     * The first layer (by z-order) defines the canvas size (must have fixed dimensions).
     * Subsequent layers reference previously-placed layers by their dependency ID using the `parent` parameter in `relative()`.
+* **Output:** `ImageArtifact` (RGBA mode) with composited result.
 
-**Anchor Functions:**
+**Key Features:**
+* Anchor-based positioning: `absolute(x, y)` for fixed coordinates, `relative(parent, align, x, y)` for parent-relative positioning
+* Alignment string format: comma-separated pair (e.g., `"c,c"` for center-center, `"se,se"` for start-end on both axes)
+* Z-ordering determined by parent reference topology (strict chain required)
+* Optional layer properties: `mode` (blend mode) and `opacity` (0.0 to 1.0)
+* CEL expression support: `${...}` expressions in anchor specs are evaluated during context resolution
 
-Anchor specifications are created using builder functions that return plain dicts (for compatibility with Invariant's expression resolver):
-
-* **`absolute(x, y)`** — Place at absolute pixel coordinates on the canvas:
-  ```python
-  absolute(x=0, y=0)  # Top-left corner
-  absolute(x=10, y=20)  # Specific pixel position
-  ```
-  * `x`: `int | Decimal | str` (pixel offset from left edge). Accepts `str` for deferred `${...}` CEL expressions.
-  * `y`: `int | Decimal | str` (pixel offset from top edge). Accepts `str` for deferred `${...}` CEL expressions.
-
-* **`relative(parent, align, x=0, y=0)`** — Position relative to a previously-placed layer:
-  ```python
-  relative("background", "c,c")  # Center on background layer
-  relative("folder", "se,se", x=5, y=-5)  # Top-right corner of folder, with offset
-  ```
-  * `parent`: `str` (dependency ID of the layer to position relative to). Must reference a layer that appears earlier in z-order.
-  * `align`: `str` (alignment string, see below).
-  * `x`: `int | Decimal | str` (optional horizontal offset in pixels, default 0). Accepts `str` for deferred `${...}` CEL expressions.
-  * `y`: `int | Decimal | str` (optional vertical offset in pixels, default 0). Accepts `str` for deferred `${...}` CEL expressions.
-
-**Alignment String Format:**
-
-Comma-separated pair using `s` (start), `c` (center), `e` (end):
-* First value = self alignment (which point on *this* layer)
-* Second value = parent alignment (which point on the *parent* layer)
-* Examples:
-  * `"c,c"` = center of self aligns to center of parent (centered)
-  * `"s,e"` = start of self aligns to end of parent (outside placement / badge)
-  * `"e,e"` = end of self aligns to end of parent (right/bottom aligned)
-  * `"se,ee"` = on x-axis: self-start to parent-end; on y-axis: self-end to parent-end (text following on same baseline)
-
-**Z-Ordering and Parent Topology:**
-
-Layers are drawn in the order determined by the parent reference topology:
-* If the parent references form a **strict chain** (each layer has a unique parent, no siblings), z-order is unambiguous and follows the chain.
-* If multiple layers share the same parent (siblings), z-order is ambiguous and the op will raise an error. In this case, you must either:
-  * Restructure to form a chain (e.g., `badge` → `folder` → `background` instead of both `badge` and `folder` → `background`), or
-  * Provide an explicit `layer_order` parameter (future enhancement).
-
-**Additional Layer Properties:**
-
-Each layer in the `layers` dict can optionally include:
-* `mode`: `str` (blend mode: `"normal"`, `"multiply"`, `"screen"`, `"overlay"`, `"darken"`, `"lighten"`, `"add"`, default `"normal"`).
-* `opacity`: `Decimal` (0.0 to 1.0, default 1.0).
-
-These are specified by extending the anchor spec dict returned by `absolute()` or `relative()`.
-
-**Examples:**
-
-```python
-# Simple two-layer composition: background + centered content
-"final": Node(
-    op_name="gfx:composite",
-    params={
-        "layers": {
-            "background": absolute(0, 0),  # First layer defines canvas
-            "content": relative("background", "c,c"),  # Center on background
-        },
-    },
-    deps=["background", "content"],
-)
-
-# Three-layer: folder icon with badge on top-right corner
-"final": Node(
-    op_name="gfx:composite",
-    params={
-        "layers": {
-            "background": absolute(0, 0),
-            "folder": relative("background", "c,c"),  # Folder centered on background
-            "badge": relative("folder", "se,se"),  # Badge at folder's top-right
-        },
-    },
-    deps=["background", "folder", "badge"],
-)
-
-# With opacity and offset
-"final": Node(
-    op_name="gfx:composite",
-    params={
-        "layers": {
-            "background": absolute(0, 0),
-            "overlay": {
-                **relative("background", "c,c", y=5),  # Center, shifted 5px down
-                "opacity": Decimal("0.8"),  # 80% opacity
-            },
-        },
-    },
-    deps=["background", "overlay"],
-)
-```
-
-**Note on CEL Expression Support:**
-
-Builder functions (`absolute()`, `relative()`) return plain Python dicts. The upstream `_resolve_value()` function recursively walks dicts and lists, so `${...}` CEL expressions embedded in anchor specs (e.g., `relative("bg", "c,c", y="${icon.height + 10}")`) are evaluated during Phase 1 (Context Resolution) before the op executes. This allows dynamic positioning based on upstream artifact dimensions.
+**See [composite.md](composite.md) for complete specification including anchor functions, alignment format, z-ordering rules, examples, and implementation details.**
 
 #### **gfx:layout**
 
@@ -351,12 +264,23 @@ Content-sized arrangement engine. Arranges items in a flow (row or column) when 
   * `direction`: `"row"` or `"column"` (main axis flow direction).  
   * `align`: Cross-axis alignment using `"s"` (start), `"c"` (center), or `"e"` (end).  
   * `gap`: Decimal (spacing between items in pixels).  
-  * `items`: List\[str\] (ordered list of upstream node IDs that produce `ImageArtifact`s).  
+  * `items`: `list[ImageArtifact]` — ordered list of images to arrange. In node params, each item is typically provided via `ref("dep_name")`, which resolves to the upstream `ImageArtifact` during Phase 1.  
 * **Output**: `ImageArtifact` sized to the tight bounding box of the arranged items (RGBA mode).  
 * **Key difference from composite**: No anchoring to named layers; items flow sequentially. Output size is derived from content, not fixed.  
 * **Use Case:** Arranging icon + text vertically, or multiple elements horizontally before compositing onto a fixed-size background.
 
-**Note on `items` parameter:** Unlike `gfx:composite`'s `layers` dict (which contains complex nested anchor specs), `gfx:layout`'s `items` is a simple ordered list of dependency ID strings. This flat structure is acceptable within Invariant's params model since it contains no complex nested configuration—it's analogous to a `layer_order` list, just specifying the sequence of items to arrange.
+**See [layout.md](layout.md) for complete specification including row/column behavior, cross-axis alignment, output sizing rules, examples, and implementation details.**
+
+#### **Choosing Between `gfx:layout` and `gfx:composite`**
+
+| Feature | `gfx:layout` | `gfx:composite` |
+|:--|:--|:--|
+| **Output size** | Content-sized (derived from items) | Fixed-size (defined by first layer) |
+| **Positioning** | Sequential flow (no anchoring) | Anchor-based (absolute/relative) |
+| **Use case** | Arranging items in sequence | Stacking layers with precise positioning |
+| **Input structure** | Simple list of `ImageArtifact`s | List of layer dicts with anchor functions |
+
+**Common Pattern:** Use `gfx:layout` to arrange content-sized elements (icon + text), then use `gfx:composite` to position the laid-out content onto a fixed-size background.
 
 ### **Group D: Type Conversion (Casting)**
 
@@ -551,7 +475,7 @@ flowchart LR
 This example demonstrates the **template + context** pattern: a graph template that accepts context (size, icon, temperature) and renders a Stream Deck button.
 
 ```python
-from invariant import Node, Executor, OpRegistry
+from invariant import Node, Executor, OpRegistry, ref
 from invariant.store.chain import ChainStore
 from invariant.store.memory import MemoryStore
 from invariant.store.disk import DiskStore
@@ -623,7 +547,7 @@ template = {
             "direction": "column",
             "align": "c",
             "gap": Decimal("5"),
-            "items": ["icon", "text"],  # References to upstream node IDs
+            "items": [ref("icon"), ref("text")],
         },
         deps=["icon", "text"],
     ),
@@ -809,7 +733,7 @@ flowchart TD
 **Complete Example:**
 
 ```python
-from invariant import Node, Executor, OpRegistry
+from invariant import Node, Executor, OpRegistry, ref
 from invariant.store.memory import MemoryStore
 from invariant_gfx.artifacts import ImageArtifact
 from decimal import Decimal
@@ -852,7 +776,7 @@ graph = {
             "direction": "row",
             "align": "c",  # Center on cross-axis
             "gap": Decimal("5"),
-            "items": ["block_a", "block_b", "block_c"],
+            "items": [ref("block_a"), ref("block_b"), ref("block_c")],
         },
         deps=["block_a", "block_b", "block_c"],
     ),
@@ -863,7 +787,7 @@ graph = {
             "direction": "column",
             "align": "c",  # Center on cross-axis
             "gap": Decimal("5"),
-            "items": ["block_a", "block_b", "block_c"],
+            "items": [ref("block_a"), ref("block_b"), ref("block_c")],
         },
         deps=["block_a", "block_b", "block_c"],
     ),

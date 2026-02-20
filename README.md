@@ -2,14 +2,10 @@
 
 A deterministic, functional graphics pipeline built on **Invariant**. invariant_gfx allows developers to build complex visual assets (icons, badges, dynamic UI components, Stream Deck buttons, data visualizations) by plugging together reusable "pipeline parts" in a DAG-based system.
 
-Unlike traditional imperative rendering (where you draw lines on a mutable canvas), invariant_gfx is **functional**: every layer, mask, or composition is an immutable **Artifact** produced by a pure function.
+> **Note**: This project builds on [Invariant](https://github.com/kws/invariant/blob/main/README.md), a deterministic execution engine for DAGs. For information about Invariant's core concepts (DAG execution, caching, execution model, parameter markers, etc.), see the [upstream README](https://github.com/kws/invariant/blob/main/README.md) and [Invariant documentation](https://github.com/kws/invariant).
 
 ## Features
 
-- **Aggressive Caching**: Identical visual operations (rendering the same text, compositing the same layers) execute only once
-- **Deduplication**: The same icon rendered at the same size is reused across all buttons
-- **Reproducibility**: Bit-for-bit identical outputs across runs and architectures
-- **Functional Rendering**: Immutable artifacts flow through pure function operations
 - **Smart Layout**: Ops can inspect upstream artifact dimensions to calculate positions dynamically
 - **Anchor-Based Composition**: Position layers relative to previously-placed named layers using `absolute()` and `relative()` builder functions
 - **Content-Sized Layout**: Flow-based arrangement (row/column) with automatic sizing
@@ -30,7 +26,6 @@ invariant_gfx provides a standard library of graphics operations, registered und
 ### Group A: Sources (Data Ingestion)
 - `gfx:resolve_resource`: Resolves bundled resources (icons, images) via JustMyResource (e.g., `"lucide:thermometer"`)
 - `gfx:create_solid`: Generates solid color canvases (RGBA)
-- `gfx:resolve_font`: Resolves font family names to font file bytes via JustMyType *(deferred — `gfx:render_text` handles font resolution implicitly)*
 
 ### Group B: Transformers (Rendering)
 - `gfx:render_svg`: Converts SVG blobs into raster artifacts using cairosvg
@@ -61,10 +56,10 @@ poetry install
 
 ## Quick Start
 
-```python
-from decimal import Decimal
+This example demonstrates graphics-specific operations. For details on Invariant's execution model, parameter markers (`ref()`, `cel()`, `${...}`), and context injection, see the [upstream README](https://github.com/kws/invariant/blob/main/README.md).
 
-from invariant import Executor, Node
+```python
+from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
 
@@ -75,36 +70,43 @@ from invariant_gfx.anchors import absolute, relative
 registry = OpRegistry()
 register_core_ops(registry)  # Registers gfx:* ops
 
-# Define the graph
+# Define the graph template (designed at 72px reference size)
 graph = {
-    # Render text
+    # Render text with proportional sizing
     "text": Node(
         op_name="gfx:render_text",
         params={
             "text": "Hello",
             "font": "Geneva",
-            "size": Decimal("14"),
+            "size": "${decimal(root.width) * decimal('14') / decimal('72')}",  # 14pt at 72px, scales proportionally
             "color": (255, 255, 255, 255),  # White RGBA
         },
-        deps=[],
+        deps=["root"],
     ),
-    # Create background
+    # Create background (size from context)
     "background": Node(
         op_name="gfx:create_solid",
         params={
-            "size": (Decimal("72"), Decimal("72")),
+            "size": ("${root.width}", "${root.height}"),
             "color": (40, 40, 40, 255),  # Dark gray RGBA
         },
-        deps=[],
+        deps=["root"],
     ),
     # Composite: center text on background
     "final": Node(
         op_name="gfx:composite",
         params={
-            "layers": {
-                "background": absolute(0, 0),  # First layer defines canvas
-                "text": relative("background", "c,c"),  # Center on background
-            },
+            "layers": [
+                {
+                    "image": ref("background"),
+                    "id": "background",
+                },
+                {
+                    "image": ref("text"),
+                    "anchor": relative("background", "c@c"),
+                    "id": "text",
+                },
+            ],
         },
         deps=["background", "text"],
     ),
@@ -113,11 +115,14 @@ graph = {
 # Execute the graph
 store = MemoryStore()
 executor = Executor(registry=registry, store=store)
-results = executor.execute(graph)
 
-# Access result
-final_image = results["final"].image  # PIL.Image (RGBA)
-final_image.save("output.png", format="PNG")
+# Render at 72x72 (text at 14pt)
+results = executor.execute(graph, context={"root": {"width": 72, "height": 72}})
+results["final"].image.save("output_72.png", format="PNG")
+
+# Render at 144x144 (text scales to 28pt automatically)
+results = executor.execute(graph, context={"root": {"width": 144, "height": 144}})
+results["final"].image.save("output_144.png", format="PNG")
 ```
 
 For more complete examples, see:
@@ -145,12 +150,9 @@ See [docs/status.md](docs/status.md) for detailed implementation status.
 
 ## Architecture
 
-invariant_gfx uses Invariant's two-phase execution model:
+invariant_gfx uses Invariant's execution model. For details on the two-phase execution model (Context Resolution and Action Execution), see the [upstream documentation](https://github.com/kws/invariant).
 
-1. **Phase 1: Context Resolution** - Builds input manifests for each node, calculates stable hashes
-2. **Phase 2: Action Execution** - Executes operations or retrieves from cache
-
-For detailed architecture documentation, see [docs/architecture.md](docs/architecture.md).
+For invariant_gfx-specific architecture documentation, see [docs/architecture.md](docs/architecture.md).
 
 For AI agents working with this codebase, see [AGENTS.md](AGENTS.md).
 
