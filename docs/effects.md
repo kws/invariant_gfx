@@ -42,7 +42,7 @@ Extracts the alpha channel from an image, returning an alpha-only artifact.
 * **Output:** `ImageArtifact` — RGB channels zeroed, alpha channel preserved from source.
 * **Use Case:** Isolating the shape/silhouette of text, icons, or other content for effect processing.
 
-#### **gfx:invert**
+#### **gfx:invert_alpha**
 
 Inverts the alpha channel of an image.
 
@@ -51,7 +51,7 @@ Inverts the alpha channel of an image.
 * **Output:** `ImageArtifact` — alpha values inverted (255 - original).
 * **Use Case:** Creating the "negative space" mask needed for inner shadows.
 
-#### **gfx:threshold**
+#### **gfx:threshold_alpha**
 
 Applies a binary threshold to the alpha channel.
 
@@ -61,7 +61,7 @@ Applies a binary threshold to the alpha channel.
 * **Output:** `ImageArtifact` — alpha set to 255 where original >= `t`, 0 otherwise.
 * **Use Case:** Producing crisp edges from blurred or anti-aliased masks.
 
-#### **gfx:mask**
+#### **gfx:mask_alpha**
 
 Applies a mask to an image's alpha channel.
 
@@ -136,6 +136,20 @@ Expands the canvas by adding transparent padding around an image.
   * `bottom`: `int` (padding in pixels).
 * **Output:** `ImageArtifact` — canvas expanded by the specified padding. Original image centered within the new bounds.
 * **Use Case:** Providing room for effects that expand beyond the source bounds (shadows, glows, strokes).
+
+#### **gfx:crop**
+
+Shrinks the canvas by removing pixels from the edges (inverse of pad).
+
+* **Inputs:**
+  * `image`: `ImageArtifact` (source image).
+  * `left`: `int` (pixels to remove from left edge).
+  * `top`: `int` (pixels to remove from top edge).
+  * `right`: `int` (pixels to remove from right edge).
+  * `bottom`: `int` (pixels to remove from bottom edge).
+* **Output:** `ImageArtifact` — canvas reduced to the rectangle from `(left, top)` to `(width - right, height - bottom)`. Pixels outside that rectangle are discarded.
+* **Constraint:** All insets must be non-negative and `left + right < width`, `top + bottom < height` (output must have positive dimensions).
+* **Use Case:** Trimming expanded canvases after effects (e.g. undo pad, or crop back to content bounds); extracting a sub-region for thumbnails or tiles.
 
 ### **Color & Opacity Primitives**
 
@@ -380,12 +394,12 @@ Creates a shadow visible only inside the source shape — the "pressed" or "inse
 flowchart TD
     src["source (upstream)"]
     alpha["extract_alpha"]
-    inv["invert"]
+    inv["invert_alpha"]
     dilate["dilate"]
     blur["gaussian_blur"]
     color["colorize"]
     translate["translate"]
-    clip["mask (clip to source)"]
+    clip["mask_alpha (clip to source)"]
     src --> alpha
     alpha --> inv --> dilate --> blur --> color --> translate --> clip
     alpha --> clip
@@ -423,7 +437,7 @@ def inner_shadow(
     )
 
     nodes["inverted"] = Node(
-        op_name="gfx:invert",
+        op_name="gfx:invert_alpha",
         params={"image": ref("alpha")},
         deps=["alpha"],
     )
@@ -461,7 +475,7 @@ def inner_shadow(
         prev = "offset"
 
     nodes["clipped"] = Node(
-        op_name="gfx:mask",
+        op_name="gfx:mask_alpha",
         params={"image": ref(prev), "mask": ref("alpha")},
         deps=[prev, "alpha"],
     )
@@ -612,15 +626,16 @@ These eight primitives unlock drop shadow, outer stroke, and glow — the most c
 | `gfx:opacity` | Effect intensity control |
 | `gfx:translate` | Shadow offset |
 | `gfx:pad` | Canvas expansion for effects |
-| `gfx:mask` | Inner shadows, clipped effects |
+| `gfx:mask_alpha` | Inner shadows, clipped effects |
 
 ### **Tier 2: Extended Effects**
 
 | Op | Unlocks |
 |:--|:--|
-| `gfx:invert` | Inner shadows, inverted masks |
+| `gfx:invert_alpha` | Inner shadows, inverted masks |
 | `gfx:erode` | Edge detection (dilate - erode), inset effects |
-| `gfx:threshold` | Crisp mask edges from blurred sources |
+| `gfx:threshold_alpha` | Crisp mask edges from blurred sources |
+| `gfx:crop` | Canvas trimming, sub-region extraction (inverse of pad) |
 
 ### **Tier 3: Advanced (Post-V1)**
 
