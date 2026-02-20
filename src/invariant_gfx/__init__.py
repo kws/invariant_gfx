@@ -13,6 +13,28 @@ def register_core_ops(registry: OpRegistry) -> None:
     Args:
         registry: The OpRegistry instance to register operations in.
     """
-    from invariant_gfx.ops import OPS
+    from invariant_gfx.ops import (
+        blob_to_image,
+        composite,
+        create_solid,
+        layout,
+        render_svg,
+        render_text,
+        resize,
+        resolve_resource,
+    )
 
-    registry.register_package("gfx", OPS)
+    ops_to_register = [
+        ("gfx:create_solid", create_solid),
+        ("gfx:resolve_resource", resolve_resource),
+        ("gfx:render_svg", render_svg),
+        ("gfx:render_text", render_text),
+        ("gfx:resize", resize),
+        ("gfx:composite", composite),
+        ("gfx:layout", layout),
+        ("gfx:blob_to_image", blob_to_image),
+    ]
+
+    for name, op in ops_to_register:
+        if not registry.has(name):
+            registry.register(name, op)
