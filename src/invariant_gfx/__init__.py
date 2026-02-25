@@ -1,10 +1,12 @@
 """Invariant GFX: A deterministic, DAG-based graphics engine built on Invariant."""
 
+from importlib.metadata import version
+
 from invariant.registry import OpRegistry
 
 from invariant_gfx.recipes import drop_shadow
 
-__version__ = "0.1.0"
+__version__ = version("invariant-gfx")
 
 __all__ = ["drop_shadow", "register_core_ops", "__version__"]
 

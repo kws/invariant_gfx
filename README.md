@@ -24,7 +24,7 @@ Invariant GFX gives you aggressive caching and deduplication: identical visual o
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/kws/invariant-gfx
 cd invariant-gfx
 
 # Install dependencies
