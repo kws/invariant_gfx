@@ -1,13 +1,16 @@
 """Recipe for packing multi-line text into a fixed box with greedy wrapping."""
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from PIL import Image, ImageDraw
 from invariant import Node, SubGraphNode, ref
 
 from invariant_gfx.anchors import relative
 from invariant_gfx.artifacts import BlobArtifact
-from invariant_gfx.ops.render_text import _load_font
+from invariant_gfx.ops.render_text import _binary_search_fit_width, _load_font
+
+_TEXT_PADDING = 2  # Keep in sync with gfx:render_text padding.
 
 
 @dataclass(frozen=True)
@@ -19,11 +22,13 @@ class _PackedLayout:
 
 
 def _measure_text(text: str, pil_font) -> tuple[int, int]:
-    """Measure text using Pillow textbbox."""
+    """Measure text using Pillow textbbox, including render_text padding."""
     image = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     bbox = draw.textbbox((0, 0), text, font=pil_font)
-    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+    width = max(0, bbox[2] - bbox[0])
+    height = max(0, bbox[3] - bbox[1])
+    return width + _TEXT_PADDING * 2, height + _TEXT_PADDING * 2
 
 
 def _truncate_to_width(token: str, max_width: int, pil_font) -> str:
@@ -101,6 +106,101 @@ def _layout_height(lines: list[str], pil_font, line_gap: int) -> int:
     return sum(heights) + max(0, len(heights) - 1) * line_gap
 
 
+def _max_font_size_without_truncation(
+    tokens: list[str],
+    font: str | BlobArtifact,
+    width: int,
+    max_font_size: int,
+    weight: int | None,
+    style: str,
+) -> int | None:
+    """Largest font size where every token fits within width (no truncation)."""
+    non_empty_tokens = [token for token in tokens if token]
+    if not non_empty_tokens:
+        return max_font_size
+
+    fit_width_value = width - _TEXT_PADDING * 2
+    if fit_width_value <= 0:
+        return None
+
+    fit_width = Decimal(str(fit_width_value))
+    best = max_font_size
+    pil_font_min = _load_font(font, 1, weight, style)
+    for token in non_empty_tokens:
+        token_width, _ = _measure_text(token, pil_font_min)
+        if token_width > width:
+            return None
+        token_max = _binary_search_fit_width(token, font, fit_width, weight, style)
+        best = min(best, token_max)
+        if best <= 0:
+            return None
+    return best
+
+
+def _drop_lines_to_fit(
+    *,
+    text: str,
+    tokens: list[str],
+    font: str | BlobArtifact,
+    width: int,
+    height: int,
+    font_size: int,
+    line_gap: int,
+    weight: int | None,
+    style: str,
+) -> _PackedLayout:
+    """Drop trailing lines until the layout fits height, adding ellipsis if needed."""
+    pil_font = _load_font(font, font_size, weight, style)
+    lines = _wrap_tokens(tokens, width, pil_font)
+    original_count = len(lines)
+
+    while lines and _layout_height(lines, pil_font, line_gap) > height:
+        lines.pop()
+
+    if not lines:
+        return _PackedLayout(
+            font_size=font_size,
+            lines=[_truncate_to_width(text.strip(), width, pil_font)],
+        )
+
+    if len(lines) < original_count:
+        tail = lines[-1]
+        if not tail.endswith("…"):
+            tail = f"{tail}…"
+        lines[-1] = _truncate_to_width(tail, width, pil_font)
+
+    return _PackedLayout(font_size=font_size, lines=lines)
+
+
+def _find_layout_by_height(
+    tokens: list[str],
+    font: str | BlobArtifact,
+    width: int,
+    height: int,
+    min_font_size: int,
+    max_font_size: int,
+    line_gap: int,
+    weight: int | None,
+    style: str,
+) -> _PackedLayout | None:
+    """Binary-search the largest font size whose wrapped lines fit height."""
+    low = min_font_size
+    high = max_font_size
+    best_layout: _PackedLayout | None = None
+
+    while low <= high:
+        mid = (low + high) // 2
+        pil_font = _load_font(font, mid, weight, style)
+        lines = _wrap_tokens(tokens, width, pil_font)
+        if _layout_height(lines, pil_font, line_gap) <= height:
+            best_layout = _PackedLayout(font_size=mid, lines=lines)
+            low = mid + 1
+        else:
+            high = mid - 1
+
+    return best_layout
+
+
 def _fit_layout(
     text: str,
     font: str | BlobArtifact,
@@ -117,33 +217,65 @@ def _fit_layout(
     if not tokens:
         tokens = [""]
 
-    best_layout: _PackedLayout | None = None
-    for size in range(max_font_size, min_font_size - 1, -1):
-        pil_font = _load_font(font, size, weight, style)
-        lines = _wrap_tokens(tokens, width, pil_font)
-        if _layout_height(lines, pil_font, line_gap) <= height:
-            return _PackedLayout(font_size=size, lines=lines)
-        best_layout = _PackedLayout(font_size=size, lines=lines)
-
-    if best_layout is None:
-        return _PackedLayout(font_size=min_font_size, lines=[""])
-
-    # Still too tall at min size: drop from end until it fits, adding ellipsis on the last line.
-    pil_font = _load_font(font, min_font_size, weight, style)
-    lines = list(best_layout.lines)
-    while lines and _layout_height(lines, pil_font, line_gap) > height:
-        lines.pop()
-
-    if not lines:
-        return _PackedLayout(
+    max_no_trunc = _max_font_size_without_truncation(
+        tokens=tokens,
+        font=font,
+        width=width,
+        max_font_size=max_font_size,
+        weight=weight,
+        style=style,
+    )
+    if max_no_trunc is not None and max_no_trunc >= min_font_size:
+        layout = _find_layout_by_height(
+            tokens=tokens,
+            font=font,
+            width=width,
+            height=height,
+            min_font_size=min_font_size,
+            max_font_size=max_no_trunc,
+            line_gap=line_gap,
+            weight=weight,
+            style=style,
+        )
+        if layout is not None:
+            return layout
+        return _drop_lines_to_fit(
+            text=text,
+            tokens=tokens,
+            font=font,
+            width=width,
+            height=height,
             font_size=min_font_size,
-            lines=[_truncate_to_width(text.strip(), width, pil_font)],
+            line_gap=line_gap,
+            weight=weight,
+            style=style,
         )
 
-    if len(lines) < len(best_layout.lines):
-        lines[-1] = _truncate_to_width(f"{lines[-1]}…", width, pil_font)
+    layout = _find_layout_by_height(
+        tokens=tokens,
+        font=font,
+        width=width,
+        height=height,
+        min_font_size=min_font_size,
+        max_font_size=max_font_size,
+        line_gap=line_gap,
+        weight=weight,
+        style=style,
+    )
+    if layout is not None:
+        return layout
 
-    return _PackedLayout(font_size=min_font_size, lines=lines)
+    return _drop_lines_to_fit(
+        text=text,
+        tokens=tokens,
+        font=font,
+        width=width,
+        height=height,
+        font_size=min_font_size,
+        line_gap=line_gap,
+        weight=weight,
+        style=style,
+    )
 
 
 def _to_axis_align(value: str, axis: str) -> str:
