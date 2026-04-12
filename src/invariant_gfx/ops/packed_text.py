@@ -1,14 +1,17 @@
-"""Recipe for packing multi-line text into a fixed box with greedy wrapping."""
+"""gfx:packed_text operation - packs multi-line text into a fixed-size canvas."""
 
 from dataclasses import dataclass
 from decimal import Decimal
 
 from PIL import Image, ImageDraw
-from invariant import Node, SubGraphNode, ref
 
-from invariant_gfx.anchors import relative
-from invariant_gfx.artifacts import BlobArtifact
-from invariant_gfx.ops.render_text import _binary_search_fit_width, _load_font
+from invariant.protocol import ICacheable
+from invariant_gfx.artifacts import BlobArtifact, ImageArtifact
+from invariant_gfx.ops.render_text import (
+    _binary_search_fit_width,
+    _load_font,
+    _render_at_size,
+)
 
 _TEXT_PADDING = 2  # Keep in sync with gfx:render_text padding.
 
@@ -40,7 +43,7 @@ def _truncate_to_width(token: str, max_width: int, pil_font) -> str:
     if width <= max_width:
         return token
 
-    ellipsis = "…"
+    ellipsis = "\u2026"
     ellipsis_width, _ = _measure_text(ellipsis, pil_font)
     if ellipsis_width > max_width:
         return ""
@@ -165,8 +168,8 @@ def _drop_lines_to_fit(
 
     if len(lines) < original_count:
         tail = lines[-1]
-        if not tail.endswith("…"):
-            tail = f"{tail}…"
+        if not tail.endswith("\u2026"):
+            tail = f"{tail}\u2026"
         lines[-1] = _truncate_to_width(tail, width, pil_font)
 
     return _PackedLayout(font_size=font_size, lines=lines)
@@ -298,105 +301,146 @@ def _to_axis_align(value: str, axis: str) -> str:
     return aliases[value]
 
 
+def _to_int(value, *, name: str) -> int:
+    """Convert value to int, handling Decimal, int, or str."""
+    if isinstance(value, Decimal):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(Decimal(value))
+        except Exception as exc:
+            raise ValueError(
+                f"{name} must be an int-compatible string, got '{value}'"
+            ) from exc
+    raise ValueError(f"{name} must be int, Decimal, or str, got {type(value)}")
+
+
 def packed_text(
     text: str,
-    *,
-    size: tuple[int, int],
+    size: tuple[int, int] | list[int],
     font: str | BlobArtifact,
     color: tuple[int, int, int, int] = (255, 255, 255, 255),
     min_font_size: int = 10,
     max_font_size: int | None = None,
-    line_gap: int = 0,
+    line_gap: Decimal | int | str = 0,
     align_horizontal: str = "center",
     align_vertical: str = "center",
     weight: int | None = None,
     style: str = "normal",
-) -> SubGraphNode:
-    """Build a SubGraphNode that greedily packs multi-line text into a fixed size.
+) -> ICacheable:
+    """Render packed multi-line text into a fixed-size RGBA canvas.
 
-    The recipe pre-computes line wrapping and chosen font size when the graph is built,
-    then emits a subgraph that renders each line, stacks lines using gfx:layout, and
-    anchors that stack into a transparent fixed-size canvas with configurable alignment.
+    Args:
+        text: String content to render.
+        size: Tuple/list (width, height) in pixels.
+        font: String (font family name) or BlobArtifact (font file bytes).
+        color: Tuple[int, int, int, int] (RGBA, 0-255 per channel).
+        min_font_size: Smallest font size allowed.
+        max_font_size: Optional maximum font size.
+        line_gap: Gap between lines in pixels.
+        align_horizontal: "start"/"center"/"end" (or aliases).
+        align_vertical: "top"/"center"/"bottom" (or aliases).
+        weight: Font weight (100-900, optional, only for string fonts).
+        style: Font style: "normal" or "italic".
+
+    Returns:
+        ImageArtifact sized to the requested canvas (RGBA mode).
     """
-    width, height = size
+    if not isinstance(text, str):
+        raise ValueError(f"text must be a string, got {type(text)}")
+
+    if not isinstance(size, (tuple, list)) or len(size) != 2:
+        raise ValueError(f"size must be a tuple/list of (width, height), got {size}")
+
+    width = _to_int(size[0], name="size[0]")
+    height = _to_int(size[1], name="size[1]")
     if width <= 0 or height <= 0:
         raise ValueError(f"size values must be positive, got {size}")
-    if min_font_size <= 0:
+
+    min_font_size_int = _to_int(min_font_size, name="min_font_size")
+    if min_font_size_int <= 0:
         raise ValueError(f"min_font_size must be positive, got {min_font_size}")
-    if max_font_size is not None and max_font_size < min_font_size:
-        raise ValueError(
-            "max_font_size must be greater than or equal to min_font_size, "
-            f"got min={min_font_size}, max={max_font_size}"
-        )
-    if line_gap < 0:
+
+    max_font_size_int: int | None = None
+    if max_font_size is not None:
+        max_font_size_int = _to_int(max_font_size, name="max_font_size")
+        if max_font_size_int < min_font_size_int:
+            raise ValueError(
+                "max_font_size must be greater than or equal to min_font_size, "
+                f"got min={min_font_size_int}, max={max_font_size_int}"
+            )
+
+    line_gap_int = _to_int(line_gap, name="line_gap")
+    if line_gap_int < 0:
         raise ValueError(f"line_gap must be non-negative, got {line_gap}")
 
-    resolved_max = max_font_size or max(min(width, height), min_font_size)
+    if not isinstance(color, (tuple, list)) or len(color) != 4:
+        raise ValueError(
+            f"color must be a tuple/list of 4 RGBA values, got {type(color)}"
+        )
+
+    r, g, b, a = color
+    if not all(isinstance(c, int) and 0 <= c <= 255 for c in (r, g, b, a)):
+        raise ValueError(f"color values must be int in range 0-255, got {color}")
+
+    resolved_max = max_font_size_int or max(min(width, height), min_font_size_int)
     layout = _fit_layout(
         text=text,
         font=font,
         width=width,
         height=height,
-        min_font_size=min_font_size,
+        min_font_size=min_font_size_int,
         max_font_size=resolved_max,
-        line_gap=line_gap,
+        line_gap=line_gap_int,
         weight=weight,
         style=style,
     )
 
     h_align = _to_axis_align(align_horizontal, "horizontal")
     v_align = _to_axis_align(align_vertical, "vertical")
-    block_align = f"{h_align}{v_align}@{h_align}{v_align}"
 
-    nodes: dict[str, Node] = {
-        "canvas": Node(
-            op_name="gfx:create_solid",
-            params={"size": size, "color": (0, 0, 0, 0)},
-            deps=[],
-        ),
-    }
+    pil_font = _load_font(font, layout.font_size, weight, style)
+    line_images = [_render_at_size(line, pil_font, color) for line in layout.lines]
 
-    line_node_ids: list[str] = []
-    for index, line in enumerate(layout.lines):
-        node_id = f"line_{index}"
-        nodes[node_id] = Node(
-            op_name="gfx:render_text",
-            params={
-                "text": line,
-                "font": font,
-                "color": color,
-                "size": layout.font_size,
-                "weight": weight,
-                "style": style,
-            },
-            deps=[],
-        )
-        line_node_ids.append(node_id)
-
-    nodes["text_block"] = Node(
-        op_name="gfx:layout",
-        params={
-            "direction": "column",
-            "align": h_align,
-            "gap": line_gap,
-            "items": [ref(node_id) for node_id in line_node_ids],
-        },
-        deps=line_node_ids,
+    block_width = max(image.width for image in line_images)
+    block_height = sum(image.height for image in line_images) + line_gap_int * (
+        len(line_images) - 1
     )
 
-    nodes["packed"] = Node(
-        op_name="gfx:composite",
-        params={
-            "layers": [
-                {"image": ref("canvas"), "id": "canvas"},
-                {
-                    "image": ref("text_block"),
-                    "id": "text_block",
-                    "anchor": relative("canvas", block_align),
-                },
-            ],
-        },
-        deps=["canvas", "text_block"],
-    )
+    block = Image.new("RGBA", (block_width, block_height), (0, 0, 0, 0))
+    y = 0
+    for image in line_images:
+        if h_align == "s":
+            x = 0
+        elif h_align == "c":
+            x = (block_width - image.width) // 2
+        else:
+            x = block_width - image.width
 
-    return SubGraphNode(params={}, deps=[], graph=nodes, output="packed")
+        temp = Image.new("RGBA", (block_width, block_height), (0, 0, 0, 0))
+        temp.paste(image.image, (x, y))
+        block = Image.alpha_composite(block, temp)
+        y += image.height + line_gap_int
+
+    if h_align == "s":
+        block_x = 0
+    elif h_align == "c":
+        block_x = (width - block_width) // 2
+    else:
+        block_x = width - block_width
+
+    if v_align == "s":
+        block_y = 0
+    elif v_align == "c":
+        block_y = (height - block_height) // 2
+    else:
+        block_y = height - block_height
+
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    temp = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    temp.paste(block, (block_x, block_y))
+    canvas = Image.alpha_composite(canvas, temp)
+
+    return ImageArtifact(canvas)

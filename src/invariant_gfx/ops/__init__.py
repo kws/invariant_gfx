@@ -20,6 +20,7 @@ from invariant_gfx.ops.layout import layout
 from invariant_gfx.ops.mask_alpha import mask_alpha
 from invariant_gfx.ops.opacity import opacity
 from invariant_gfx.ops.pad import pad
+from invariant_gfx.ops.packed_text import packed_text
 from invariant_gfx.ops.threshold_alpha import threshold_alpha
 from invariant_gfx.ops.tint import tint
 from invariant_gfx.ops.translate import translate
@@ -52,6 +53,7 @@ __all__ = [
     "mask_alpha",
     "opacity",
     "pad",
+    "packed_text",
     "threshold_alpha",
     "tint",
     "translate",
@@ -99,6 +101,7 @@ def register_core_ops(registry) -> None:
         ("colorize", colorize),
         ("layout", layout),
         ("opacity", opacity),
+        ("packed_text", packed_text),
         ("blob_to_image", blob_to_image),
         ("extract_alpha", extract_alpha),
         ("invert_alpha", invert_alpha),

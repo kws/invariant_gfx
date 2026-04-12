@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Example: Packed Text Recipe
+"""Example: Packed Text Op
 
-Render multi-line text into a fixed-size canvas using the packed_text recipe.
+Render multi-line text into a fixed-size canvas using the packed_text op.
 
 Usage:
     uv run python examples/packed_text.py "Momentary lapse of Reason"
@@ -12,12 +12,11 @@ Usage:
 import argparse
 from pathlib import Path
 
-from invariant import Executor
+from invariant import Executor, Node
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
 
 from invariant_gfx import register_core_ops
-from invariant_gfx.recipes import packed_text
 
 
 def parse_size(value: str) -> tuple[int, int]:
@@ -69,14 +68,18 @@ def main() -> int:
     args = parser.parse_args()
 
     graph = {
-        "packed": packed_text(
-            args.text,
-            size=args.size,
-            font="Geneva",
-            min_font_size=10,
-            max_font_size=64,
-            align_horizontal="center",
-            align_vertical="center",
+        "packed": Node(
+            op_name="gfx:packed_text",
+            params={
+                "text": args.text,
+                "size": args.size,
+                "font": "Geneva",
+                "min_font_size": 10,
+                "max_font_size": 64,
+                "align_horizontal": "center",
+                "align_vertical": "center",
+            },
+            deps=[],
         )
     }
 
