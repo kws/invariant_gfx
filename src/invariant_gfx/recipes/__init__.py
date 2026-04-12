@@ -5,6 +5,7 @@ from invariant_gfx.recipes.inner_glow import inner_glow
 from invariant_gfx.recipes.inner_shadow import inner_shadow
 from invariant_gfx.recipes.outer_glow import outer_glow
 from invariant_gfx.recipes.outer_stroke import outer_stroke
+from invariant_gfx.recipes.packed_text import packed_text
 from invariant_gfx.recipes.reflection import reflection
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "inner_shadow",
     "outer_glow",
     "outer_stroke",
+    "packed_text",
     "reflection",
 ]
