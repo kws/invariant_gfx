@@ -45,9 +45,6 @@ Repository = "https://github.com/kws/invariant-gfx"
 Documentation = "https://github.com/kws/invariant-gfx"
 "Bug Tracker" = "https://github.com/kws/invariant-gfx/issues"
 
-[tool.uv.sources]
-invariant-core = {path = "../invariant", editable = true}
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/invariant_gfx"]
 
