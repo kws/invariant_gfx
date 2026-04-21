@@ -374,7 +374,7 @@ wheels = [
 
 [[package]]
 name = "invariant-gfx"
-version = "0.2.0"
+version = "0.3.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "cairosvg" },

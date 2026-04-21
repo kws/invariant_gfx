@@ -1,6 +1,6 @@
 [project]
 name = "invariant-gfx"
-version = "0.2.0"
+version = "0.3.0.dev0"
 description = "A deterministic, functional graphics pipeline built on Invariant. Build icons, badges, dynamic UI components, and data visualizations by composing reusable pipeline parts in a DAG-based system."
 authors = [
     {name = "Kaj Siebert", email = "kaj@k-si.com"}
