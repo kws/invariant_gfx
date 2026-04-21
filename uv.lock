@@ -183,6 +183,15 @@ wheels = [
 ]
 
 [[package]]
+name = "diskcache"
+version = "5.6.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/21/1c1ffc1a039ddcc459db43cc108658f32c57d271d7289a2794e401d0fdb6/diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc", size = 67916, upload-time = "2023-08-31T06:12:00.316Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/27/4570e78fc0bf5ea0ca45eb1de3818a23787af9b390c0b0a0033a1b8236f9/diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19", size = 45550, upload-time = "2023-08-31T06:11:58.822Z" },
+]
+
+[[package]]
 name = "distlib"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -351,31 +360,21 @@ wheels = [
 
 [[package]]
 name = "invariant-core"
-version = "0.3.0.dev0"
-source = { editable = "../invariant" }
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
     { name = "cel-python" },
+    { name = "diskcache" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "cachetools", specifier = ">=5.3.0" },
-    { name = "cel-python", specifier = ">=0.5.0,<0.6.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "cachetools", specifier = ">=5.3.0" },
-    { name = "pre-commit", specifier = ">=3.8.0" },
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-cov", specifier = ">=6.0.0" },
-    { name = "ruff", specifier = ">=0.15.1" },
+sdist = { url = "https://files.pythonhosted.org/packages/39/bf/77a4c5362ac387210dea45c57fa69bbe058e7d860a46aff48aca3e6ba1ee/invariant_core-0.3.0.tar.gz", hash = "sha256:04dbd30fafc7062feb44f86822e29e98a0255ddee07654317962e6bf2aa35a6b", size = 237082, upload-time = "2026-04-21T08:58:32.386Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/65/e08b0e3df1e06fe6890d10acc10e7122d78226b6c3e92f501a706a3baf9b/invariant_core-0.3.0-py3-none-any.whl", hash = "sha256:ab392e916393bee4d5cca9b0fb7fe803803dac5bab8c61915c9c9f1274fd4fe2", size = 37542, upload-time = "2026-04-21T08:58:30.547Z" },
 ]
 
 [[package]]
 name = "invariant-gfx"
-version = "0.2.0.dev0"
+version = "0.3.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "cairosvg" },
@@ -397,7 +396,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cairosvg", specifier = ">=2.8.2,<3.0.0" },
-    { name = "invariant-core", editable = "../invariant" },
+    { name = "invariant-core", specifier = ">=0.2.0" },
     { name = "justmyresource", specifier = ">=1.1.1,<2.0.0" },
     { name = "justmytype", specifier = ">=0.3.0,<1.0.0" },
     { name = "pillow", specifier = ">=12.1.1,<13.0.0" },

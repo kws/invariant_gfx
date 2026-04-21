@@ -27,6 +27,74 @@ Invariant GFX is a **child project** of Invariant. The relationship is:
 - Invariant GFX implements graphics Ops that return `ICacheable` artifacts
 - Invariant GFX uses Invariant's Executor and ChainStore directly—no wrapper needed
 
+## **Development Setup**
+
+**This project uses uv for dependency management and testing.**
+
+- **Run tests:** `uv run pytest tests/` or `uv run pytest tests/test_file.py::test_name`
+- **Install dependencies:** `uv sync`
+- **Run Python commands:** `uv run python ...`
+- **DO NOT** use bare `python`, `pytest`, or `python -m pytest` — always use `uv run` first
+
+## **Release process**
+
+Same conventions as the parent project [Invariant](../invariant/AGENTS.md) (**Release process**): uv, hatchling, git tags, no in-repo changelog unless you add one later.
+
+### **Version source of truth**
+
+- **Distribution version:** `[project].version` in `pyproject.toml` (PyPI / `pip` name **`invariant-gfx`**; Python import package **`invariant_gfx`**).
+- **Runtime `__version__`:** `src/invariant_gfx/__init__.py` reads `importlib.metadata.version("invariant-gfx")`, so it always matches the installed distribution.
+
+### **`invariant-core` dependency**
+
+GFX depends on **`invariant-core`** (see `dependencies` in `pyproject.toml`). If a release needs APIs or fixes from a newer Invariant, **ship `invariant-core` first**, bump the specifier here if the minimum version rises, then cut **`invariant-gfx`**.
+
+### **Version strings (PEP 440)**
+
+- **Shipping releases:** plain semver in `pyproject.toml`, e.g. `0.2.0` (no `v` prefix in the file).
+- **Between releases:** a **development release**, e.g. `0.3.0.dev0`, until the next stable cut.
+
+### **`uv.lock` after a version change (workspace package)**
+
+`invariant-gfx` is the editable workspace root. After you edit **`[project].version`** in `pyproject.toml`, run:
+
+```bash
+uv lock --refresh
+```
+
+**Why not plain `uv lock`?** A normal resolve can leave the `[[package]] name = "invariant-gfx"` stanza in `uv.lock` on the **previous** version until the lock is refreshed. **`uv lock --refresh`** forces the lockfile to match (look for output like `Updated invariant-gfx v0.2.0 -> v0.3.0.dev0`). Commit `uv.lock` together with `pyproject.toml`.
+
+### **Cutting a stable release**
+
+1. **Branch / mainline:** finish the work to ship; ensure **`uv run pytest tests/`** passes.
+2. **Release commit:** set `version = "X.Y.Z"` in `pyproject.toml`, run **`uv lock --refresh`**, commit both files.
+   - **Commit title:** `chore: release vX.Y.Z` (include `v` in the title).
+   - **Commit body:** user-facing release notes (bullets). Use the git message as the canonical summary unless you add `CHANGELOG.md`.
+3. **Tag:** lightweight (or annotated) git tag **`vX.Y.Z`** on that commit.
+4. **Build artifacts for PyPI:** After the post-release dev bump, **`uv build` on `main` produces dev-tagged wheels**. For **`invariant_gfx-X.Y.Z-*.whl`** and **`invariant_gfx-X.Y.Z.tar.gz`**, build from the release tag:
+
+   ```bash
+   git checkout "vX.Y.Z"
+   uv build
+   git checkout -
+   ```
+
+5. **Publish (manual):** upload `dist/*` for **`invariant-gfx`** (no publish workflow in-repo unless you add one).
+
+### **Immediately after the release**
+
+Separate commit: bump to the next dev line (e.g. **`chore: bump to development release 0.3.0.dev0`**), set `version` in `pyproject.toml`, run **`uv lock --refresh`**, commit both files. The stable tag should point only at the stable commit, not the dev bump.
+
+### **Tag and version checklist**
+
+| Step | Check |
+| :--- | :--- |
+| `pyproject.toml` | `version` matches intended PEP 440 stable or dev string |
+| `uv.lock` | After every version edit: **`uv lock --refresh`**, then confirm `invariant-gfx` in `uv.lock` matches `pyproject.toml` |
+| `invariant-core` | Lower bound in `dependencies` is still correct for this release |
+| Git tag | **`vX.Y.Z`** matches the semver in `pyproject.toml` on the release commit |
+| `dist/` for upload | Built from **`vX.Y.Z`** (or that commit), not from `main` on a `.dev` version |
+
 ## **Critical Constraints (MUST FOLLOW)**
 
 All constraints from Invariant apply, plus graphics-specific rules:
@@ -186,6 +254,7 @@ See [../invariant/AGENTS.md](../invariant/AGENTS.md) for:
 - Core Invariant concepts and constraints
 - ICacheable protocol details
 - Execution model deep dive
+- **Release process for `invariant-core`** (this file documents **`invariant-gfx`** releases under **Release process** above)
 
 See [../invariant/docs/serialization.md](../invariant/docs/serialization.md) for:
 - Graph JSON wire format (Node, SubGraphNode, ref, cel, $icacheable)
