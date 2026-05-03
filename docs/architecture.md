@@ -563,7 +563,7 @@ store = ChainStore(
 executor = Executor(registry=registry, store=store)
 ```
 
-**Ephemeral nodes:** For nodes that render frequently-changing inputs (e.g. current time) and are rarely reused, set `cache=False` so the executor skips caching. See [AGENTS.md](../AGENTS.md) §Cache and MemoryStore.
+**Ephemeral nodes:** For nodes that render frequently-changing inputs (e.g. current time) and are rarely reused, set `cache=False` so the executor skips caching for that node and downstream dependents. See [AGENTS.md](../AGENTS.md) §Cache and MemoryStore.
 
 ### **Context Injection**
 

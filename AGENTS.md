@@ -217,7 +217,7 @@ store = ChainStore(
 )
 ```
 
-**Ephemeral nodes (`cache=False`):** Nodes that render frequently-changing inputs (e.g. current time, live data) and are rarely reused should set `cache=False`. The executor skips cache lookup and never stores the result—the op runs every time. Use for nodes whose outputs change often and would pollute the cache.
+**Ephemeral nodes (`cache=False`):** Nodes that render frequently-changing inputs (e.g. current time, live data) and are rarely reused should set `cache=False`. The executor skips cache lookup and never stores the result—the op runs every time. Cache bypass also cascades to downstream nodes so frequently-changing values do not pollute the cache with one-off derived artifacts.
 
 ```python
 Node(
@@ -258,4 +258,3 @@ See [../invariant/AGENTS.md](../invariant/AGENTS.md) for:
 
 See [../invariant/docs/serialization.md](../invariant/docs/serialization.md) for:
 - Graph JSON wire format (Node, SubGraphNode, ref, cel, $icacheable)
-
