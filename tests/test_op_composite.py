@@ -319,6 +319,22 @@ class TestComposite:
         assert center[2] == 0
         assert center[3] == 180
 
+    def test_normal_layer_clips_when_partially_off_canvas(self):
+        """Normal alpha compositing should clip layers outside the base canvas."""
+        bg = ImageArtifact(Image.new("RGBA", (10, 10), (0, 0, 0, 0)))
+        overlay = ImageArtifact(Image.new("RGBA", (5, 5), (255, 0, 0, 180)))
+
+        result = composite(
+            [
+                {"image": bg, "id": "bg"},
+                {"image": overlay, "anchor": absolute(-2, -2), "id": "overlay"},
+            ]
+        )
+
+        assert result.image.getpixel((0, 0)) == (255, 0, 0, 180)
+        assert result.image.getpixel((2, 2)) == (255, 0, 0, 180)
+        assert result.image.getpixel((3, 3)) == (0, 0, 0, 0)
+
     def test_blend_mode_multiply(self):
         """Multiply darkens: white * gray = gray, black * anything = black."""
         bg = ImageArtifact(Image.new("RGBA", (10, 10), (255, 255, 255, 255)))

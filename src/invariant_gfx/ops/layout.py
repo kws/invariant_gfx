@@ -96,9 +96,7 @@ def layout(
                 y = total_height - item.height
 
             # Use alpha_composite so low-alpha pixels are preserved
-            temp = Image.new("RGBA", (total_width, total_height), (0, 0, 0, 0))
-            temp.paste(item.image, (x, y))
-            canvas = Image.alpha_composite(canvas, temp)
+            canvas.alpha_composite(item.image, (x, y))
 
             # Move to next position
             x += item.width + gap_int
@@ -116,9 +114,7 @@ def layout(
                 x = total_width - item.width
 
             # Use alpha_composite so low-alpha pixels are preserved
-            temp = Image.new("RGBA", (total_width, total_height), (0, 0, 0, 0))
-            temp.paste(item.image, (x, y))
-            canvas = Image.alpha_composite(canvas, temp)
+            canvas.alpha_composite(item.image, (x, y))
 
             # Move to next position
             y += item.height + gap_int

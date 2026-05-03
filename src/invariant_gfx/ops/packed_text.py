@@ -3,13 +3,14 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageFont
 
 from invariant.protocol import ICacheable
 from invariant_gfx.artifacts import BlobArtifact, ImageArtifact
 from invariant_gfx.ops.render_text import (
-    _binary_search_fit_width,
+    _fit_width_font_size,
     _load_font,
+    _measure_loaded_text,
     _render_at_size,
 )
 
@@ -24,27 +25,53 @@ class _PackedLayout:
     lines: list[str]
 
 
-def _measure_text(text: str, pil_font) -> tuple[int, int]:
-    """Measure text using Pillow textbbox, including render_text padding."""
-    image = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    bbox = draw.textbbox((0, 0), text, font=pil_font)
-    width = max(0, bbox[2] - bbox[0])
-    height = max(0, bbox[3] - bbox[1])
-    return width + _TEXT_PADDING * 2, height + _TEXT_PADDING * 2
+class _TextMeasurer:
+    """Per-render cache for loaded fonts and text measurements."""
+
+    def __init__(
+        self,
+        font: str | BlobArtifact,
+        weight: int | None,
+        style: str,
+    ) -> None:
+        self._font = font
+        self._weight = weight
+        self._style = style
+        self._fonts: dict[int, ImageFont.FreeTypeFont] = {}
+        self._measurements: dict[tuple[int, str], tuple[int, int]] = {}
+
+    def font(self, size: int) -> ImageFont.FreeTypeFont:
+        if size not in self._fonts:
+            self._fonts[size] = _load_font(self._font, size, self._weight, self._style)
+        return self._fonts[size]
+
+    def measure(self, text: str, size: int) -> tuple[int, int]:
+        key = (size, text)
+        if key not in self._measurements:
+            width, height = _measure_loaded_text(text, self.font(size))
+            self._measurements[key] = (
+                width + _TEXT_PADDING * 2,
+                height + _TEXT_PADDING * 2,
+            )
+        return self._measurements[key]
 
 
-def _truncate_to_width(token: str, max_width: int, pil_font) -> str:
+def _truncate_to_width(
+    token: str,
+    max_width: int,
+    measurer: _TextMeasurer,
+    font_size: int,
+) -> str:
     """Fit a single token into max_width using a trailing ellipsis when required."""
     if max_width <= 0:
         return ""
 
-    width, _ = _measure_text(token, pil_font)
+    width, _ = measurer.measure(token, font_size)
     if width <= max_width:
         return token
 
     ellipsis = "\u2026"
-    ellipsis_width, _ = _measure_text(ellipsis, pil_font)
+    ellipsis_width, _ = measurer.measure(ellipsis, font_size)
     if ellipsis_width > max_width:
         return ""
 
@@ -54,7 +81,7 @@ def _truncate_to_width(token: str, max_width: int, pil_font) -> str:
     while low <= high:
         mid = (low + high) // 2
         candidate = f"{token[:mid]}{ellipsis}"
-        candidate_width, _ = _measure_text(candidate, pil_font)
+        candidate_width, _ = measurer.measure(candidate, font_size)
         if candidate_width <= max_width:
             best = candidate
             low = mid + 1
@@ -64,7 +91,12 @@ def _truncate_to_width(token: str, max_width: int, pil_font) -> str:
     return best or ellipsis
 
 
-def _wrap_tokens(tokens: list[str], max_width: int, pil_font) -> list[str]:
+def _wrap_tokens(
+    tokens: list[str],
+    max_width: int,
+    measurer: _TextMeasurer,
+    font_size: int,
+) -> list[str]:
     """Greedy token wrapping with horizontal truncation for oversized tokens."""
     if not tokens:
         return [""]
@@ -78,7 +110,7 @@ def _wrap_tokens(tokens: list[str], max_width: int, pil_font) -> list[str]:
         else:
             candidate = f"{' '.join(current_line)} {token}"
 
-        candidate_width, _ = _measure_text(candidate, pil_font)
+        candidate_width, _ = measurer.measure(candidate, font_size)
         if candidate_width <= max_width:
             current_line.append(token)
             continue
@@ -86,14 +118,16 @@ def _wrap_tokens(tokens: list[str], max_width: int, pil_font) -> list[str]:
         if current_line:
             lines.append(" ".join(current_line))
             current_line = [token]
-            token_width, _ = _measure_text(token, pil_font)
+            token_width, _ = measurer.measure(token, font_size)
             if token_width > max_width:
-                current_line = [_truncate_to_width(token, max_width, pil_font)]
+                current_line = [
+                    _truncate_to_width(token, max_width, measurer, font_size)
+                ]
                 lines.append(current_line[0])
                 current_line = []
             continue
 
-        lines.append(_truncate_to_width(token, max_width, pil_font))
+        lines.append(_truncate_to_width(token, max_width, measurer, font_size))
 
     if current_line:
         lines.append(" ".join(current_line))
@@ -101,9 +135,14 @@ def _wrap_tokens(tokens: list[str], max_width: int, pil_font) -> list[str]:
     return lines
 
 
-def _layout_height(lines: list[str], pil_font, line_gap: int) -> int:
+def _layout_height(
+    lines: list[str],
+    measurer: _TextMeasurer,
+    font_size: int,
+    line_gap: int,
+) -> int:
     """Measure wrapped text height."""
-    heights = [_measure_text(line, pil_font)[1] for line in lines]
+    heights = [measurer.measure(line, font_size)[1] for line in lines]
     if not heights:
         return 0
     return sum(heights) + max(0, len(heights) - 1) * line_gap
@@ -116,8 +155,9 @@ def _max_font_size_without_truncation(
     max_font_size: int,
     weight: int | None,
     style: str,
+    measurer: _TextMeasurer,
 ) -> int | None:
-    """Largest font size where every token fits within width (no truncation)."""
+    """Estimate a large font size where every token fits within width."""
     non_empty_tokens = [token for token in tokens if token]
     if not non_empty_tokens:
         return max_font_size
@@ -128,12 +168,26 @@ def _max_font_size_without_truncation(
 
     fit_width = Decimal(str(fit_width_value))
     best = max_font_size
-    pil_font_min = _load_font(font, 1, weight, style)
+    token_limits: dict[str, int] = {}
     for token in non_empty_tokens:
-        token_width, _ = _measure_text(token, pil_font_min)
+        token_width, _ = measurer.measure(token, 1)
         if token_width > width:
             return None
-        token_max = _binary_search_fit_width(token, font, fit_width, weight, style)
+        token_width_at_best, _ = measurer.measure(token, best)
+        if token_width_at_best <= width:
+            continue
+        if token not in token_limits:
+            token_limits[token] = _fit_width_font_size(
+                token,
+                font,
+                fit_width,
+                weight,
+                style,
+                measure_width=lambda size, token=token: max(
+                    0, measurer.measure(token, size)[0] - _TEXT_PADDING * 2
+                ),
+            )
+        token_max = token_limits[token]
         best = min(best, token_max)
         if best <= 0:
             return None
@@ -151,26 +205,26 @@ def _drop_lines_to_fit(
     line_gap: int,
     weight: int | None,
     style: str,
+    measurer: _TextMeasurer,
 ) -> _PackedLayout:
     """Drop trailing lines until the layout fits height, adding ellipsis if needed."""
-    pil_font = _load_font(font, font_size, weight, style)
-    lines = _wrap_tokens(tokens, width, pil_font)
+    lines = _wrap_tokens(tokens, width, measurer, font_size)
     original_count = len(lines)
 
-    while lines and _layout_height(lines, pil_font, line_gap) > height:
+    while lines and _layout_height(lines, measurer, font_size, line_gap) > height:
         lines.pop()
 
     if not lines:
         return _PackedLayout(
             font_size=font_size,
-            lines=[_truncate_to_width(text.strip(), width, pil_font)],
+            lines=[_truncate_to_width(text.strip(), width, measurer, font_size)],
         )
 
     if len(lines) < original_count:
         tail = lines[-1]
         if not tail.endswith("\u2026"):
             tail = f"{tail}\u2026"
-        lines[-1] = _truncate_to_width(tail, width, pil_font)
+        lines[-1] = _truncate_to_width(tail, width, measurer, font_size)
 
     return _PackedLayout(font_size=font_size, lines=lines)
 
@@ -185,6 +239,7 @@ def _find_layout_by_height(
     line_gap: int,
     weight: int | None,
     style: str,
+    measurer: _TextMeasurer,
 ) -> _PackedLayout | None:
     """Binary-search the largest font size whose wrapped lines fit height."""
     low = min_font_size
@@ -193,9 +248,8 @@ def _find_layout_by_height(
 
     while low <= high:
         mid = (low + high) // 2
-        pil_font = _load_font(font, mid, weight, style)
-        lines = _wrap_tokens(tokens, width, pil_font)
-        if _layout_height(lines, pil_font, line_gap) <= height:
+        lines = _wrap_tokens(tokens, width, measurer, mid)
+        if _layout_height(lines, measurer, mid, line_gap) <= height:
             best_layout = _PackedLayout(font_size=mid, lines=lines)
             low = mid + 1
         else:
@@ -214,8 +268,9 @@ def _fit_layout(
     line_gap: int,
     weight: int | None,
     style: str,
+    measurer: _TextMeasurer,
 ) -> _PackedLayout:
-    """Find largest font size whose wrapped lines fit height, then clamp if needed."""
+    """Find a large font size whose wrapped lines fit height, then clamp if needed."""
     tokens = text.split()
     if not tokens:
         tokens = [""]
@@ -227,6 +282,7 @@ def _fit_layout(
         max_font_size=max_font_size,
         weight=weight,
         style=style,
+        measurer=measurer,
     )
     if max_no_trunc is not None and max_no_trunc >= min_font_size:
         layout = _find_layout_by_height(
@@ -239,6 +295,7 @@ def _fit_layout(
             line_gap=line_gap,
             weight=weight,
             style=style,
+            measurer=measurer,
         )
         if layout is not None:
             return layout
@@ -252,6 +309,7 @@ def _fit_layout(
             line_gap=line_gap,
             weight=weight,
             style=style,
+            measurer=measurer,
         )
 
     layout = _find_layout_by_height(
@@ -264,6 +322,7 @@ def _fit_layout(
         line_gap=line_gap,
         weight=weight,
         style=style,
+        measurer=measurer,
     )
     if layout is not None:
         return layout
@@ -278,6 +337,7 @@ def _fit_layout(
         line_gap=line_gap,
         weight=weight,
         style=style,
+        measurer=measurer,
     )
 
 
@@ -386,6 +446,7 @@ def packed_text(
         raise ValueError(f"color values must be int in range 0-255, got {color}")
 
     resolved_max = max_font_size_int or max(min(width, height), min_font_size_int)
+    measurer = _TextMeasurer(font, weight, style)
     layout = _fit_layout(
         text=text,
         font=font,
@@ -396,12 +457,13 @@ def packed_text(
         line_gap=line_gap_int,
         weight=weight,
         style=style,
+        measurer=measurer,
     )
 
     h_align = _to_axis_align(align_horizontal, "horizontal")
     v_align = _to_axis_align(align_vertical, "vertical")
 
-    pil_font = _load_font(font, layout.font_size, weight, style)
+    pil_font = measurer.font(layout.font_size)
     line_images = [_render_at_size(line, pil_font, color) for line in layout.lines]
 
     block_width = max(image.width for image in line_images)
@@ -419,9 +481,7 @@ def packed_text(
         else:
             x = block_width - image.width
 
-        temp = Image.new("RGBA", (block_width, block_height), (0, 0, 0, 0))
-        temp.paste(image.image, (x, y))
-        block = Image.alpha_composite(block, temp)
+        block.alpha_composite(image.image, (x, y))
         y += image.height + line_gap_int
 
     if h_align == "s":
@@ -439,8 +499,6 @@ def packed_text(
         block_y = height - block_height
 
     canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    temp = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    temp.paste(block, (block_x, block_y))
-    canvas = Image.alpha_composite(canvas, temp)
+    canvas.alpha_composite(block, (block_x, block_y))
 
     return ImageArtifact(canvas)

@@ -24,6 +24,8 @@ class ImageArtifact(ICacheable):
         if image.mode != "RGBA":
             image = image.convert("RGBA")
         self.image = image
+        self._png_cache: bytes | None = None
+        self._hash_cache: str | None = None
 
     @property
     def width(self) -> int:
@@ -37,8 +39,10 @@ class ImageArtifact(ICacheable):
 
     def get_stable_hash(self) -> str:
         """SHA-256 hash of canonical PNG bytes."""
-        png_bytes = self._to_canonical_png()
-        return hashlib.sha256(png_bytes).hexdigest()
+        if self._hash_cache is None:
+            png_bytes = self._to_canonical_png()
+            self._hash_cache = hashlib.sha256(png_bytes).hexdigest()
+        return self._hash_cache
 
     def to_stream(self, stream: BinaryIO) -> None:
         """Serialize as canonical PNG."""
@@ -56,9 +60,13 @@ class ImageArtifact(ICacheable):
 
     def _to_canonical_png(self) -> bytes:
         """Convert to canonical PNG (level 1, no metadata)."""
+        if self._png_cache is not None:
+            return self._png_cache
+
         buffer = BytesIO()
         self.image.save(buffer, format="PNG", compress_level=1, optimize=False)
-        return buffer.getvalue()
+        self._png_cache = buffer.getvalue()
+        return self._png_cache
 
 
 class BlobArtifact(ICacheable):

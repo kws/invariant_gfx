@@ -215,7 +215,8 @@ Creates a tight-fitting "Text Pill" artifact using Pillow.
     * If `BlobArtifact`: used directly as font file bytes (must be a valid TTF/OTF); raises an error if the blob is not a loadable font.  
   * `color`: RGBA Tuple\[int, int, int, int\] (0-255 per channel).  
   * `size`: Decimal | int | str (font size in pixels). **Mutually exclusive with `fit_width`.** Use when fixed size is desired.  
-  * `fit_width`: Decimal | int (target max width in pixels). **Mutually exclusive with `size`.** Uses binary search to find the largest font size where text width <= fit_width, then renders. Callers typically pass `${canvas.width}` via CEL with `deps=["canvas"]`.  
+  * `fit_width`: Decimal | int (target max width in pixels). **Mutually exclusive with `size`.** Estimates a font size from a reference text measurement, then retries a small bounded number of times until the rendered text fits and usually fills at least 95% of `fit_width`. It does not guarantee the mathematically largest fitting size. Callers typically pass `${canvas.width}` via CEL with `deps=["canvas"]`.  
+  * `exact`: bool (default `False`). When `fit_width` is provided, set `True` to use the largest fitting font size instead of the faster 95%-fill estimate.  
   * `weight`: int | None (font weight 100-900, optional). Only applies when `font` is a string.  
   * `style`: str (font style: `"normal"` or `"italic"`, default `"normal"`). Only applies when `font` is a string.  
 * **Output:** `ImageArtifact` sized to the text bounding box (RGBA mode).  
@@ -223,7 +224,7 @@ Creates a tight-fitting "Text Pill" artifact using Pillow.
   * Exactly one of `size` or `fit_width` must be provided; raises `ValueError` if both or neither.  
   * If `font` is a string: uses `FontRegistry.find_font()` from JustMyType to resolve font family, then `FontInfo.load()` to get `PIL.ImageFont`.  
   * If `font` is a `BlobArtifact`: loads font directly from the blob bytes using `PIL.ImageFont.truetype()`.  
-  * For `fit_width`: binary search over font sizes (1 to min(500, fit_width*2)) to find largest size where text fits; then renders at that size.  
+  * For `fit_width`: by default, measures the text at a reference size, scales that measurement to estimate the target font size, and performs bounded retries if the estimate is too wide or visibly underfilled. With `exact=True`, performs a binary search to find the largest fitting size.  
   * Then uses Pillow's text rendering to create the image.  
 * **Use Case:** Rendering labels, temperatures, or other text content. Use `fit_width` when text must scale to fit a container (e.g. canvas width).
 

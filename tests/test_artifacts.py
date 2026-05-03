@@ -83,6 +83,33 @@ class TestImageArtifact:
 
         assert artifact2.get_stable_hash() == original_hash
 
+    def test_canonical_png_is_cached(self):
+        """Test that repeated PNG serialization reuses cached bytes."""
+        image = Image.new("RGBA", (10, 10), (255, 128, 64, 255))
+        artifact = ImageArtifact(image)
+
+        first_png = artifact._to_canonical_png()
+        second_png = artifact._to_canonical_png()
+
+        assert first_png is second_png
+
+    def test_hash_uses_cached_png(self):
+        """Test that hashing and serialization share the cached PNG bytes."""
+        image = Image.new("RGBA", (10, 10), (255, 128, 64, 255))
+        artifact = ImageArtifact(image)
+
+        original_png = artifact._to_canonical_png()
+        artifact.get_stable_hash()
+
+        stream = BytesIO()
+        artifact.to_stream(stream)
+        stream.seek(0)
+        length = int.from_bytes(stream.read(8), byteorder="big")
+        serialized_png = stream.read(length)
+
+        assert serialized_png == original_png
+        assert artifact._to_canonical_png() is original_png
+
 
 class TestBlobArtifact:
     """Tests for BlobArtifact."""

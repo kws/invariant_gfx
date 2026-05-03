@@ -5,7 +5,11 @@ from decimal import Decimal
 import pytest
 
 from invariant_gfx.artifacts import BlobArtifact, ImageArtifact
-from invariant_gfx.ops.render_text import render_text
+from invariant_gfx.ops.render_text import (
+    _fit_width_font_size,
+    _measure_text_width,
+    render_text,
+)
 
 
 class TestRenderText:
@@ -212,6 +216,23 @@ class TestRenderText:
         assert result.width < 100  # "Hi" should be small
         assert result.height < 50
 
+    def test_multiline_text_uses_multiline_bounds(self):
+        """Test that multiline text keeps enough vertical space."""
+        single_line = render_text(
+            text="A",
+            font="Geneva",
+            size=24,
+            color=(255, 0, 0, 255),
+        )
+        multiline = render_text(
+            text="A\nB",
+            font="Geneva",
+            size=24,
+            color=(255, 0, 0, 255),
+        )
+
+        assert multiline.height > single_line.height
+
     def test_fit_width_basic(self):
         """Test fit_width with short text - result fits within target width."""
         result = render_text(
@@ -237,6 +258,22 @@ class TestRenderText:
         assert isinstance(result, ImageArtifact)
         assert result.width <= 155  # text width + padding
         assert result.height > 0
+
+    def test_fit_width_exact_uses_largest_fitting_size(self):
+        """Test exact fit_width finds the largest fitting metric size."""
+        text = "WWWWWWWWWW"
+        target = 80
+        size = _fit_width_font_size(
+            text=text,
+            font="Geneva",
+            fit_width=Decimal(str(target)),
+            exact=True,
+        )
+
+        width, _ = _measure_text_width(text, "Geneva", size)
+        next_width, _ = _measure_text_width(text, "Geneva", size + 1)
+        assert width <= target
+        assert next_width > target
 
     def test_fit_width_exclusive(self):
         """Test that passing both size and fit_width raises ValueError."""

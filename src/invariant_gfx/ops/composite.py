@@ -112,11 +112,11 @@ def composite(layers: list[dict[str, Any]]) -> ICacheable:
 
         # Composite onto canvas
         if layer_image.mode == "RGBA":
-            temp = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
-            temp.paste(layer_image, (x, y))
             if mode == "normal":
-                canvas = Image.alpha_composite(canvas, temp)
+                canvas.alpha_composite(layer_image, (x, y))
             else:
+                temp = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
+                temp.paste(layer_image, (x, y))
                 canvas = _blend_layer(canvas, temp, mode)
         else:
             canvas.paste(layer_image, (x, y))
