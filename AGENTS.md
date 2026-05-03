@@ -38,7 +38,7 @@ Invariant GFX is a **child project** of Invariant. The relationship is:
 
 ## **Release process**
 
-Same conventions as the parent project [Invariant](../invariant/AGENTS.md) (**Release process**): uv, hatchling, git tags, no in-repo changelog unless you add one later.
+Same conventions as Invariant Core (**Release process**): uv, hatchling, git tags, no in-repo changelog unless you add one later. PyPI publication is automated by `.github/workflows/release.yml` using PyPI Trusted Publishing from GitHub Actions.
 
 ### **Version source of truth**
 
@@ -71,15 +71,21 @@ uv lock --refresh
    - **Commit title:** `chore: release vX.Y.Z` (include `v` in the title).
    - **Commit body:** user-facing release notes (bullets). Use the git message as the canonical summary unless you add `CHANGELOG.md`.
 3. **Tag:** lightweight (or annotated) git tag **`vX.Y.Z`** on that commit.
-4. **Build artifacts for PyPI:** After the post-release dev bump, **`uv build` on `main` produces dev-tagged wheels**. For **`invariant_gfx-X.Y.Z-*.whl`** and **`invariant_gfx-X.Y.Z.tar.gz`**, build from the release tag:
+4. **Push:** push the release commit and tag. The tag push triggers `.github/workflows/release.yml`.
+5. **Publish (CI):** GitHub Actions verifies that `vX.Y.Z` matches `pyproject.toml`, rejects dev/pre-release versions, runs tests, builds `dist/*` from the tagged source, and publishes **`invariant-gfx`** to PyPI through Trusted Publishing. Do not upload `dist/*` manually with a local PyPI token.
 
-   ```bash
-   git checkout "vX.Y.Z"
-   uv build
-   git checkout -
-   ```
+### **GitHub Actions / PyPI Trusted Publishing**
 
-5. **Publish (manual):** upload `dist/*` for **`invariant-gfx`** (no publish workflow in-repo unless you add one).
+The release workflow uses the GitHub environment **`pypi`** and job permission **`id-token: write`**. Configure the PyPI project `invariant-gfx` with a Trusted Publisher matching:
+
+| Field | Value |
+| :--- | :--- |
+| Owner | `kws` |
+| Repository | `invariant-gfx` |
+| Workflow | `release.yml` |
+| Environment | `pypi` |
+
+No PyPI API token secret is needed. If GitHub requires environment approval, approve only after checking that the tag points at the intended release commit.
 
 ### **Immediately after the release**
 
@@ -93,7 +99,7 @@ Separate commit: bump to the next dev line (e.g. **`chore: bump to development r
 | `uv.lock` | After every version edit: **`uv lock --refresh`**, then confirm `invariant-gfx` in `uv.lock` matches `pyproject.toml` |
 | `invariant-core` | Lower bound in `dependencies` is still correct for this release |
 | Git tag | **`vX.Y.Z`** matches the semver in `pyproject.toml` on the release commit |
-| `dist/` for upload | Built from **`vX.Y.Z`** (or that commit), not from `main` on a `.dev` version |
+| Release workflow | `.github/workflows/release.yml` passes and publishes from the `vX.Y.Z` tag |
 
 ## **Critical Constraints (MUST FOLLOW)**
 
