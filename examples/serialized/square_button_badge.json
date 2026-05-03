@@ -1,0 +1,160 @@
+{
+  "graph": {
+    "format": "invariant-graph",
+    "graph": {
+      "background": {
+        "deps": [
+          "height_value",
+          "width_value"
+        ],
+        "kind": "node",
+        "op_name": "gfx:create_solid",
+        "params": {
+          "color": {
+            "$tuple": [
+              30,
+              41,
+              59,
+              255
+            ]
+          },
+          "size": [
+            {
+              "$ref": "width_value"
+            },
+            {
+              "$ref": "height_value"
+            }
+          ]
+        }
+      },
+      "color_rgba": {
+        "deps": [
+          "color_value"
+        ],
+        "kind": "node",
+        "op_name": "gfx:resolve_color",
+        "params": {
+          "color": {
+            "$ref": "color_value"
+          }
+        }
+      },
+      "color_value": {
+        "deps": [
+          "color"
+        ],
+        "kind": "node",
+        "op_name": "stdlib:coalesce",
+        "params": {
+          "values": [
+            {
+              "$ref": "color"
+            },
+            "white"
+          ]
+        }
+      },
+      "final": {
+        "deps": [
+          "background",
+          "label"
+        ],
+        "kind": "node",
+        "op_name": "gfx:composite",
+        "params": {
+          "layers": [
+            {
+              "id": "background",
+              "image": {
+                "$ref": "background"
+              }
+            },
+            {
+              "anchor": {
+                "align": "c@c",
+                "parent": "background",
+                "type": "relative",
+                "x": 0,
+                "y": 0
+              },
+              "id": "label",
+              "image": {
+                "$ref": "label"
+              }
+            }
+          ]
+        }
+      },
+      "height_value": {
+        "deps": [
+          "height"
+        ],
+        "kind": "node",
+        "op_name": "stdlib:coalesce",
+        "params": {
+          "values": [
+            {
+              "$ref": "height"
+            },
+            144
+          ]
+        }
+      },
+      "label": {
+        "deps": [
+          "color_rgba",
+          "text_value",
+          "width_value"
+        ],
+        "kind": "node",
+        "op_name": "gfx:render_text",
+        "params": {
+          "color": {
+            "$ref": "color_rgba"
+          },
+          "exact": true,
+          "fit_width": {
+            "$cel": "max(1, width_value - 40)"
+          },
+          "font": "Geneva",
+          "text": {
+            "$ref": "text_value"
+          }
+        }
+      },
+      "text_value": {
+        "deps": [
+          "text"
+        ],
+        "kind": "node",
+        "op_name": "stdlib:coalesce",
+        "params": {
+          "values": [
+            {
+              "$ref": "text"
+            },
+            "BADGE"
+          ]
+        }
+      },
+      "width_value": {
+        "deps": [
+          "width"
+        ],
+        "kind": "node",
+        "op_name": "stdlib:coalesce",
+        "params": {
+          "values": [
+            {
+              "$ref": "width"
+            },
+            144
+          ]
+        }
+      }
+    },
+    "version": 1
+  },
+  "output": "final"
+}

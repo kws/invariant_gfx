@@ -2,10 +2,11 @@
 
 import hashlib
 from io import BytesIO
+from pathlib import Path
 from typing import BinaryIO
 
-from PIL import Image
 from invariant.protocol import ICacheable
+from PIL import Image
 
 
 class ImageArtifact(ICacheable):
@@ -50,6 +51,12 @@ class ImageArtifact(ICacheable):
         stream.write(len(png_bytes).to_bytes(8, byteorder="big"))
         stream.write(png_bytes)
 
+    def to_file(self, path: Path | str) -> None:
+        """Write the image artifact as a canonical PNG file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self._to_canonical_png())
+
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> "ImageArtifact":
         """Deserialize from canonical PNG."""
@@ -90,12 +97,18 @@ class BlobArtifact(ICacheable):
         return hashlib.sha256(self.data).hexdigest()
 
     def to_stream(self, stream: BinaryIO) -> None:
-        """Serialize: [8 bytes: content_type_len][content_type][8 bytes: data_len][data]."""
+        """Serialize content type and data with 8-byte length prefixes."""
         content_type_bytes = self.content_type.encode("utf-8")
         stream.write(len(content_type_bytes).to_bytes(8, byteorder="big"))
         stream.write(content_type_bytes)
         stream.write(len(self.data).to_bytes(8, byteorder="big"))
         stream.write(self.data)
+
+    def to_file(self, path: Path | str) -> None:
+        """Write the blob payload bytes to a file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self.data)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> "BlobArtifact":

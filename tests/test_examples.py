@@ -5,15 +5,20 @@ when code changes are made to the invariant-gfx package. Tests execute the
 scripts as external Python processes using subprocess for accurate testing.
 """
 
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from invariant import load_value_from_jsonable
+from invariant_gfx.artifacts import ImageArtifact
+from PIL import Image, ImageChops
 
 # Get the project root directory (parent of tests/)
 PROJECT_ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = PROJECT_ROOT / "examples"
+SERIALIZED_EXAMPLES_DIR = EXAMPLES_DIR / "serialized"
 
 
 class TestQuickStartExample:
@@ -259,3 +264,72 @@ class TestThermometerButtonExample:
         output = result.stdout
         assert "✓ Saved to:" in output
         assert result.returncode == 0
+
+
+class TestSerializedExamples:
+    """Tests for serialized graph examples."""
+
+    def test_square_button_badge_executes_with_cli(self):
+        """Serialized square badge renders a centered fit-width label."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "invariant",
+                str(SERIALIZED_EXAMPLES_DIR / "square_button_badge.json"),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        artifact = load_value_from_jsonable(json.loads(result.stdout))
+
+        assert isinstance(artifact, ImageArtifact)
+        assert artifact.width == 144
+        assert artifact.height == 144
+
+        background = Image.new("RGB", (144, 144), (30, 41, 59))
+        changed = ImageChops.difference(
+            artifact.image.convert("RGB"), background
+        ).getbbox()
+        assert changed is not None
+
+        center_x = (changed[0] + changed[2]) / 2
+        center_y = (changed[1] + changed[3]) / 2
+        assert abs(center_x - 72) <= 4
+        assert abs(center_y - 72) <= 4
+        assert changed[2] - changed[0] <= 104
+
+    def test_square_button_badge_output_file_is_png(self, tmp_path: Path):
+        """Serialized square badge can be parameterized and saved as a PNG."""
+        output_path = tmp_path / "button.png"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "invariant",
+                str(SERIALIZED_EXAMPLES_DIR / "square_button_badge.json"),
+                "--param",
+                "text=My Button",
+                "--param",
+                "color=#FF0000",
+                "--param",
+                "width=144",
+                "--param",
+                "height=72",
+                "--output",
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        assert result.stdout == ""
+        assert result.stderr == ""
+        assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+        with Image.open(output_path) as image:
+            assert image.size == (144, 72)
+            assert image.mode == "RGBA"

@@ -45,6 +45,9 @@ Repository = "https://github.com/kws/invariant-gfx"
 Documentation = "https://github.com/kws/invariant-gfx"
 "Bug Tracker" = "https://github.com/kws/invariant-gfx/issues"
 
+[project.entry-points."invariant.ops"]
+gfx = "invariant_gfx.ops:OPS"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/invariant_gfx"]
 
