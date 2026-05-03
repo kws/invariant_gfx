@@ -1,6 +1,6 @@
 # **Invariant GFX: The Functional Graphics Pipeline**
 
-**Invariant GFX** is a deterministic, DAG-based graphics engine built on **Invariant**. It allows developers to build complex visual assets (like Stream Deck buttons, dynamic badges, or data visualizations) by plugging together reusable "pipeline parts." Reusable DAG fragments can be expressed as **subgraphs** — see [Subgraphs (Invariant)](https://github.com/kws/invariant/blob/main/docs/subgraphs.md).
+**Invariant GFX** is a deterministic, DAG-based graphics engine built on **Invariant**. It allows developers to build complex visual assets (like Stream Deck buttons, dynamic badges, or data visualizations) by plugging together reusable "pipeline parts." Reusable DAG fragments can be expressed as **subgraphs** — see [Subgraphs (Invariant)](https://github.com/kws/invariant-core/blob/main/docs/subgraphs.md).
 
 Unlike traditional imperative rendering (where you draw lines on a mutable canvas), Invariant GFX is **functional**: every layer, mask, or composition is an immutable **Artifact** produced by a pure function.
 
@@ -456,11 +456,11 @@ svg = rounded_rect(
 
 ## **5\. Upstream Features (Invariant)**
 
-Invariant GFX uses Invariant's Executor, ChainStore, expression evaluation, and context injection. For details on cacheable types, expression syntax, and execution model, see [Invariant](https://github.com/kws/invariant).
+Invariant GFX uses Invariant's Executor, ChainStore, expression evaluation, and context injection. For details on cacheable types, expression syntax, and execution model, see [Invariant](https://github.com/kws/invariant-core).
 
 ### **5.1 Manifest Key Collision**
 
-The manifest is built entirely from resolved params (see [Invariant executor](https://github.com/kws/invariant/blob/main/docs/executor.md)). Param keys become manifest keys; `ref()` and `cel()` markers are resolved using dependency artifacts, but the manifest contains only the resolved values—not a separate namespace for dep IDs.
+The manifest is built entirely from resolved params (see [Invariant executor](https://github.com/kws/invariant-core/blob/main/docs/executor.md)). Param keys become manifest keys; `ref()` and `cel()` markers are resolved using dependency artifacts, but the manifest contains only the resolved values—not a separate namespace for dep IDs.
 
 **The constraint:** Param keys and manifest keys are the same. You cannot have duplicate keys. When an op needs both an artifact reference and per-item configuration (e.g., opacity, anchor) for the same logical layer, you cannot use the dep ID as a top-level param key for both—you must nest.
 

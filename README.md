@@ -2,7 +2,7 @@
 
 A deterministic, functional graphics pipeline built on **Invariant**. Invariant GFX allows developers to build complex visual assets (icons, badges, dynamic UI components, Stream Deck buttons, data visualizations) by plugging together reusable "pipeline parts" in a DAG-based system.
 
-> **Note**: This project builds on [Invariant](https://github.com/kws/invariant/blob/main/README.md), a deterministic execution engine for DAGs. For information about Invariant's core concepts (DAG execution, caching, execution model, parameter markers, etc.), see the [upstream README](https://github.com/kws/invariant/blob/main/README.md) and [Invariant documentation](https://github.com/kws/invariant).
+> **Note**: This project builds on [Invariant](https://github.com/kws/invariant-core/blob/main/README.md), a deterministic execution engine for DAGs. For information about Invariant's core concepts (DAG execution, caching, execution model, parameter markers, etc.), see the [upstream README](https://github.com/kws/invariant-core/blob/main/README.md) and [Invariant documentation](https://github.com/kws/invariant-core).
 
 ## What is Invariant GFX?
 

@@ -176,7 +176,7 @@ See [docs/architecture.md](./docs/architecture.md) for detailed specifications o
 
 ## **Upstream (Invariant)**
 
-For cacheable types, expression syntax, and execution model, see [Invariant](https://github.com/kws/invariant).
+For cacheable types, expression syntax, and execution model, see [Invariant](https://github.com/kws/invariant-core).
 
 ## **External Dependencies**
 
@@ -236,7 +236,7 @@ Node(
 
 ## **Graph Serialization**
 
-GFX graphs use Invariant's JSON wire format. See [../invariant/docs/serialization.md](../invariant/docs/serialization.md) for the normative spec.
+GFX graphs use Invariant's JSON wire format. See [../invariant-core/docs/serialization.md](../invariant-core/docs/serialization.md) for the normative spec.
 
 **When adding new artifacts:**
 
@@ -256,11 +256,11 @@ See [docs/architecture.md](./docs/architecture.md) for:
 
 See [docs/reference_pipelines.md](./docs/reference_pipelines.md) for complete pipeline examples (Layered Badge, Content Flow, Template Reuse).
 
-See [../invariant/AGENTS.md](../invariant/AGENTS.md) for:
+See [../invariant-core/AGENTS.md](../invariant-core/AGENTS.md) for:
 - Core Invariant concepts and constraints
 - ICacheable protocol details
 - Execution model deep dive
 - **Release process for `invariant-core`** (this file documents **`invariant-gfx`** releases under **Release process** above)
 
-See [../invariant/docs/serialization.md](../invariant/docs/serialization.md) for:
+See [../invariant-core/docs/serialization.md](../invariant-core/docs/serialization.md) for:
 - Graph JSON wire format (Node, SubGraphNode, ref, cel, $icacheable)
