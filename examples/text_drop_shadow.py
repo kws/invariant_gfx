@@ -20,6 +20,8 @@ from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
 
 from invariant_gfx import register_core_ops
+
+from example_fonts import resolve_example_font
 from invariant_gfx.anchors import relative
 from invariant_gfx.recipes import drop_shadow
 
@@ -93,7 +95,15 @@ def main() -> int:
     parser.add_argument(
         "--text", type=str, default="Drop shadow", help="Text to render"
     )
-    parser.add_argument("--font", type=str, default="Geneva", help="Font family")
+    parser.add_argument(
+        "--font",
+        type=str,
+        default=None,
+        help=(
+            "Font family (default: first available; "
+            "install 'invariant-gfx[fonts]' to get one)"
+        ),
+    )
     parser.add_argument("--font-size", type=int, default=24, help="Font size (pt)")
     parser.add_argument(
         "--width",
@@ -123,13 +133,15 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    font = resolve_example_font(args.font)
+
     text_color = (255, 255, 255, 255)
     shadow_color = (255, 0, 0, 220)  # Red shadow so it's easy to see on transparent
     sigma = Decimal(args.shadow_sigma)
 
     graph = create_graph(
         text=args.text,
-        font=args.font,
+        font=font,
         font_size=args.font_size,
         text_color=text_color,
         width=args.width,
@@ -146,7 +158,7 @@ def main() -> int:
     executor = Executor(registry=registry, store=store)
 
     print("Rendering text with drop shadow (transparent background)...")
-    print(f"  Text: {args.text!r}  Font: {args.font}  Size: {args.font_size}pt")
+    print(f"  Text: {args.text!r}  Font: {font}  Size: {args.font_size}pt")
     print(
         f"  Canvas: {args.width}x{args.height}  Shadow: dx={args.shadow_dx} dy={args.shadow_dy} sigma={sigma}"
     )

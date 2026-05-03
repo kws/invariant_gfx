@@ -1,6 +1,6 @@
 [project]
 name = "invariant-gfx"
-version = "0.3.0.dev0"
+version = "0.3.0"
 description = "A deterministic, functional graphics pipeline built on Invariant. Build icons, badges, dynamic UI components, and data visualizations by composing reusable pipeline parts in a DAG-based system."
 authors = [
     {name = "Kaj Siebert", email = "kaj@k-si.com"}
@@ -32,12 +32,15 @@ classifiers = [
     "Topic :: Multimedia :: Graphics",
 ]
 dependencies = [
-    "invariant-core>=0.2.0",
+    "invariant-core>=0.5.1",
     "justmytype>=0.3.0,<1.0.0",
     "justmyresource>=1.1.1,<2.0.0",
     "Pillow>=12.1.1,<13.0.0",
     "cairosvg>=2.8.2,<3.0.0",
 ]
+
+[project.optional-dependencies]
+fonts = ["justmytype-western-core>=0.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/kws/invariant-gfx"
@@ -57,6 +60,7 @@ dev = [
     "pytest>=9.0.2",
     "pre-commit>=3.8.0",
     "justmytype>=0.3.0",
+    "justmytype-western-core>=0.1.0",
     "justmyresource[icons]>=1.1.1",
 ]
 

@@ -18,6 +18,8 @@ from invariant.store.memory import MemoryStore
 
 from invariant_gfx import register_core_ops
 
+from example_fonts import resolve_example_font
+
 
 def parse_size(value: str) -> tuple[int, int]:
     """Parse size string into (width, height)."""
@@ -67,13 +69,15 @@ def main() -> int:
 
     args = parser.parse_args()
 
+    font = resolve_example_font()
+
     graph = {
         "packed": Node(
             op_name="gfx:packed_text",
             params={
                 "text": args.text,
                 "size": args.size,
-                "font": "Geneva",
+                "font": font,
                 "min_font_size": 10,
                 "max_font_size": 64,
                 "align_horizontal": "center",

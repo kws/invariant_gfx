@@ -21,6 +21,8 @@ from invariant.store.memory import MemoryStore
 
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
+
+from example_fonts import resolve_example_font
 from invariant_gfx.shapes import (
     arc,
     arrow,
@@ -43,6 +45,7 @@ def make_shape_cell(
     cell_size: int,
     label_font_size: int,
     label_color: tuple[int, int, int, int],
+    font: str,
 ) -> SubGraphNode:
     """Return a SubGraphNode that draws the shape, the label text, and layouts them vertically.
 
@@ -60,7 +63,7 @@ def make_shape_cell(
         op_name="gfx:render_text",
         params={
             "text": name,
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color,
         },
@@ -110,7 +113,7 @@ def _shape_specs(cs: int, colors: list, stroke: tuple):
     ]
 
 
-def create_shapes_showcase_graph(cell_size: int) -> dict:
+def create_shapes_showcase_graph(cell_size: int, font: str) -> dict:
     """Create the shapes showcase graph."""
     colors = [
         (30, 100, 180, 255),
@@ -137,6 +140,7 @@ def create_shapes_showcase_graph(cell_size: int) -> dict:
             cell_size=cell_size,
             label_font_size=label_font_size,
             label_color=label_color,
+            font=font,
         )
         cells.append(cell_id)
     rows_layout = [cells[:5], cells[5:10], cells[10:]]  # 5 + 5 + 1
@@ -208,7 +212,8 @@ def main():
     )
     args = parser.parse_args()
 
-    graph = create_shapes_showcase_graph(args.cell_size)
+    font = resolve_example_font()
+    graph = create_shapes_showcase_graph(args.cell_size, font)
     registry = OpRegistry()
     registry.clear()
     register_core_ops(registry)

@@ -11,6 +11,15 @@ from invariant_gfx.ops.render_text import (
     render_text,
 )
 
+from .conftest import TEST_FONT_FAMILY
+
+FONT = TEST_FONT_FAMILY
+
+
+@pytest.fixture(autouse=True)
+def _ensure_font(test_font_family: str) -> str:
+    return test_font_family
+
 
 class TestRenderText:
     """Tests for render_text operation."""
@@ -19,14 +28,13 @@ class TestRenderText:
         """Test basic text rendering with string font."""
         result = render_text(
             text="Hello",
-            font="Geneva",
+            font=FONT,
             size=Decimal("24"),
             color=(255, 0, 0, 255),
         )
 
         assert isinstance(result, ImageArtifact)
         assert result.image.mode == "RGBA"
-        # Text should have positive dimensions
         assert result.width > 0
         assert result.height > 0
 
@@ -34,7 +42,7 @@ class TestRenderText:
         """Test with integer size."""
         result = render_text(
             text="Test",
-            font="Geneva",
+            font=FONT,
             size=12,
             color=(0, 255, 0, 255),
         )
@@ -46,7 +54,7 @@ class TestRenderText:
         """Test with string size (from CEL expressions)."""
         result = render_text(
             text="Test",
-            font="Geneva",
+            font=FONT,
             size="18",
             color=(0, 0, 255, 255),
         )
@@ -58,7 +66,7 @@ class TestRenderText:
         """Test with font weight parameter."""
         result = render_text(
             text="Bold",
-            font="Geneva",
+            font=FONT,
             size=24,
             color=(255, 255, 255, 255),
             weight=700,
@@ -71,7 +79,7 @@ class TestRenderText:
         """Test with font style parameter."""
         result = render_text(
             text="Italic",
-            font="Geneva",
+            font=FONT,
             size=24,
             color=(255, 255, 255, 255),
             style="normal",
@@ -81,27 +89,16 @@ class TestRenderText:
         assert result.height > 0
 
     def test_with_blob_font(self):
-        """Test with BlobArtifact font."""
-        # Load a font file as blob
-        # We'll use a system font path
-        from pathlib import Path
+        """Test with BlobArtifact font (resolved via JustMyType)."""
+        from justmytype import FontRegistry
 
-        # Try to find a system font
-        font_paths = [
-            "/System/Library/Fonts/Geneva.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-        ]
-
-        font_data = None
-        for path in font_paths:
-            if Path(path).exists():
-                font_data = Path(path).read_bytes()
-                break
-
-        if font_data is None:
-            pytest.skip("No system font found for testing")
-
-        font_blob = BlobArtifact(data=font_data, content_type="font/ttf")
+        info = FontRegistry().find_font(FONT)
+        if info is None:
+            pytest.skip(f"{FONT} not available for blob font test")
+        font_blob = BlobArtifact(
+            data=info.path.read_bytes(),
+            content_type="font/ttf",
+        )
 
         result = render_text(
             text="Blob Font",
@@ -115,31 +112,22 @@ class TestRenderText:
         assert result.height > 0
 
     def test_missing_text(self):
-        """Test that missing text raises TypeError."""
-        # This test is no longer applicable since text is a required parameter
-        # The function will fail at call time if text is not provided
-        pass
+        """Required-arg sanity placeholder; render_text rejects missing text."""
 
     def test_missing_font(self):
-        """Test that missing font raises TypeError."""
-        # This test is no longer applicable since font is a required parameter
-        # The function will fail at call time if font is not provided
-        pass
+        """Required-arg sanity placeholder; render_text rejects missing font."""
 
     def test_missing_size(self):
         """Test that missing both size and fit_width raises ValueError."""
         with pytest.raises(ValueError, match="must provide either size or fit_width"):
             render_text(
                 text="Hello",
-                font="Geneva",
+                font=FONT,
                 color=(255, 0, 0, 255),
             )
 
     def test_missing_color(self):
-        """Test that missing color raises TypeError."""
-        # This test is no longer applicable since color is a required parameter
-        # The function will fail at call time if color is not provided
-        pass
+        """Required-arg sanity placeholder; render_text rejects missing color."""
 
     def test_invalid_font_type(self):
         """Test that invalid font type raises ValueError."""
@@ -166,7 +154,7 @@ class TestRenderText:
         with pytest.raises(ValueError, match="weight must be int in range"):
             render_text(
                 text="Hello",
-                font="Geneva",
+                font=FONT,
                 size=24,
                 color=(255, 0, 0, 255),
                 weight=50,  # Too low
@@ -177,7 +165,7 @@ class TestRenderText:
         with pytest.raises(ValueError, match="style must be 'normal' or 'italic'"):
             render_text(
                 text="Hello",
-                font="Geneva",
+                font=FONT,
                 size=24,
                 color=(255, 0, 0, 255),
                 style="bold",  # Invalid
@@ -188,7 +176,7 @@ class TestRenderText:
         with pytest.raises(ValueError, match="size must be positive"):
             render_text(
                 text="Hello",
-                font="Geneva",
+                font=FONT,
                 size=-10,
                 color=(255, 0, 0, 255),
             )
@@ -198,7 +186,7 @@ class TestRenderText:
         with pytest.raises(ValueError, match="color must be a tuple"):
             render_text(
                 text="Hello",
-                font="Geneva",
+                font=FONT,
                 size=24,
                 color=(255, 0, 0),  # Missing alpha
             )
@@ -207,12 +195,11 @@ class TestRenderText:
         """Test that output has tight bounding box."""
         result = render_text(
             text="Hi",
-            font="Geneva",
+            font=FONT,
             size=24,
             color=(255, 0, 0, 255),
         )
 
-        # Should have reasonable dimensions (not too large)
         assert result.width < 100  # "Hi" should be small
         assert result.height < 50
 
@@ -220,13 +207,13 @@ class TestRenderText:
         """Test that multiline text keeps enough vertical space."""
         single_line = render_text(
             text="A",
-            font="Geneva",
+            font=FONT,
             size=24,
             color=(255, 0, 0, 255),
         )
         multiline = render_text(
             text="A\nB",
-            font="Geneva",
+            font=FONT,
             size=24,
             color=(255, 0, 0, 255),
         )
@@ -237,7 +224,7 @@ class TestRenderText:
         """Test fit_width with short text - result fits within target width."""
         result = render_text(
             text="Hello",
-            font="Geneva",
+            font=FONT,
             fit_width=100,
             color=(255, 0, 0, 255),
         )
@@ -250,7 +237,7 @@ class TestRenderText:
         """Test fit_width with longer text fits within target."""
         result = render_text(
             text="Hello World Example",
-            font="Geneva",
+            font=FONT,
             fit_width=150,
             color=(0, 255, 0, 255),
         )
@@ -265,13 +252,13 @@ class TestRenderText:
         target = 80
         size = _fit_width_font_size(
             text=text,
-            font="Geneva",
+            font=FONT,
             fit_width=Decimal(str(target)),
             exact=True,
         )
 
-        width, _ = _measure_text_width(text, "Geneva", size)
-        next_width, _ = _measure_text_width(text, "Geneva", size + 1)
+        width, _ = _measure_text_width(text, FONT, size)
+        next_width, _ = _measure_text_width(text, FONT, size + 1)
         assert width <= target
         assert next_width > target
 
@@ -280,7 +267,7 @@ class TestRenderText:
         with pytest.raises(ValueError, match="exactly one of size or fit_width"):
             render_text(
                 text="Hello",
-                font="Geneva",
+                font=FONT,
                 size=24,
                 fit_width=100,
                 color=(255, 0, 0, 255),
@@ -288,23 +275,15 @@ class TestRenderText:
 
     def test_fit_width_with_blob_font(self):
         """Test fit_width works with BlobArtifact font."""
-        from pathlib import Path
+        from justmytype import FontRegistry
 
-        font_paths = [
-            "/System/Library/Fonts/Geneva.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-        ]
-
-        font_data = None
-        for path in font_paths:
-            if Path(path).exists():
-                font_data = Path(path).read_bytes()
-                break
-
-        if font_data is None:
-            pytest.skip("No system font found for testing")
-
-        font_blob = BlobArtifact(data=font_data, content_type="font/ttf")
+        info = FontRegistry().find_font(FONT)
+        if info is None:
+            pytest.skip(f"{FONT} not available for blob font test")
+        font_blob = BlobArtifact(
+            data=info.path.read_bytes(),
+            content_type="font/ttf",
+        )
 
         result = render_text(
             text="Fit",

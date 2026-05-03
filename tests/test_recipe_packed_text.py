@@ -15,7 +15,7 @@ def _make_executor():
     return Executor(registry=registry, store=store)
 
 
-def test_packed_text_fits_canvas():
+def test_packed_text_fits_canvas(test_font_family: str):
     """Op should render and fit a fixed-size output."""
     executor = _make_executor()
     graph = {
@@ -24,7 +24,7 @@ def test_packed_text_fits_canvas():
             params={
                 "text": "Momentary lapse of Reason",
                 "size": (196, 196),
-                "font": "Geneva",
+                "font": test_font_family,
                 "min_font_size": 12,
                 "max_font_size": 42,
                 "align_horizontal": "center",
@@ -40,7 +40,7 @@ def test_packed_text_fits_canvas():
     assert results["label"].height == 196
 
 
-def test_packed_text_handles_long_single_token():
+def test_packed_text_handles_long_single_token(test_font_family: str):
     """A single oversized token should be truncated with ellipsis and still render."""
     executor = _make_executor()
     graph = {
@@ -49,7 +49,7 @@ def test_packed_text_handles_long_single_token():
             params={
                 "text": "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch",
                 "size": (196, 196),
-                "font": "Geneva",
+                "font": test_font_family,
                 "min_font_size": 10,
                 "max_font_size": 40,
                 "align_horizontal": "left",
@@ -64,7 +64,7 @@ def test_packed_text_handles_long_single_token():
     assert results["label"].height == 196
 
 
-def test_packed_text_handles_extreme_phrase_with_drop():
+def test_packed_text_handles_extreme_phrase_with_drop(test_font_family: str):
     """Very long phrases should still render by reducing size and dropping trailing words."""
     executor = _make_executor()
     graph = {
@@ -78,7 +78,7 @@ def test_packed_text_handles_extreme_phrase_with_drop():
                     "Dream to~Hide to~Live to~Die to~Go To"
                 ),
                 "size": (196, 196),
-                "font": "Geneva",
+                "font": test_font_family,
                 "min_font_size": 8,
                 "max_font_size": 32,
                 "align_horizontal": "right",

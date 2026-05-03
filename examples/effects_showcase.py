@@ -20,6 +20,8 @@ from invariant.store.memory import MemoryStore
 
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
+
+from example_fonts import resolve_example_font
 from invariant_gfx.recipes import (
     drop_shadow,
     inner_glow,
@@ -30,7 +32,7 @@ from invariant_gfx.recipes import (
 )
 
 
-def create_effects_showcase_graph(cell_size: int) -> dict:
+def create_effects_showcase_graph(cell_size: int, font: str) -> dict:
     """Create the effects showcase graph."""
     graph: dict = {}
     text_size = Decimal(str(max(80, cell_size // 3)))
@@ -44,7 +46,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "Hi",
-            "font": "Geneva",
+            "font": font,
             "size": text_size,
             "color": (60, 60, 60, 255),
         },
@@ -84,7 +86,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "drop_shadow",
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color,
         },
@@ -130,7 +132,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "outer_stroke",
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color,
         },
@@ -177,7 +179,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "outer_glow",
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color_dark,
         },
@@ -224,7 +226,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "inner_shadow",
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color,
         },
@@ -273,7 +275,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "inner_glow",
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color_dark,
         },
@@ -345,7 +347,7 @@ def create_effects_showcase_graph(cell_size: int) -> dict:
         op_name="gfx:render_text",
         params={
             "text": "reflection",
-            "font": "Geneva",
+            "font": font,
             "size": Decimal(str(label_font_size)),
             "color": label_color,
         },
@@ -438,7 +440,8 @@ def main():
     )
     args = parser.parse_args()
 
-    graph = create_effects_showcase_graph(args.cell_size)
+    font = resolve_example_font()
+    graph = create_effects_showcase_graph(args.cell_size, font)
     registry = OpRegistry()
     registry.clear()
     register_core_ops(registry)

@@ -23,19 +23,35 @@ Invariant GFX gives you aggressive caching and deduplication: identical visual o
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/kws/invariant-gfx
-cd invariant-gfx
-
-# Install dependencies
-uv sync
+pip install invariant-gfx
 ```
 
-This project depends on a local development version of Invariant; the dependency is configured in `pyproject.toml` as a file path reference.
+To run the bundled examples or any code that hardcodes a font family (such as
+the `Inter` snippet below), install the optional font pack — it pulls
+[`justmytype-western-core`](https://pypi.org/project/justmytype-western-core/),
+which registers Inter, Noto Sans, JetBrains Mono, and a few more with
+JustMyType:
+
+```bash
+pip install 'invariant-gfx[fonts]'
+```
+
+For development inside this repository:
+
+```bash
+git clone https://github.com/kws/invariant-gfx
+cd invariant-gfx
+uv sync --all-groups
+```
+
+The `dev` group also installs `justmytype-western-core`, so the test suite and
+examples find a font without extra setup.
 
 ### Quick Start
 
-Minimal example: text on a solid background, with proportional font sizing (14pt at 72px reference). Run with `uv run python -c "..."` or adapt from [examples/quick_start.py](examples/quick_start.py).
+Minimal example: text on a solid background, with proportional font sizing
+(14pt at 72px reference). The snippet below uses `Inter`, which ships via the
+`fonts` extra; substitute any font installed on your system.
 
 ```python
 from decimal import Decimal
@@ -59,7 +75,7 @@ graph = {
         op_name="gfx:render_text",
         params={
             "text": "Hello",
-            "font": "Geneva",
+            "font": "Inter",
             "size": font_size,
             "color": (255, 255, 255, 255),
         },

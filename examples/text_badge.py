@@ -31,6 +31,8 @@ from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
 from invariant_gfx.shapes import rounded_rect
 
+from example_fonts import resolve_example_font
+
 
 def parse_rgba(color_str: str) -> tuple[int, int, int, int]:
     """Parse RGBA color string into tuple.
@@ -206,8 +208,11 @@ def main():
     parser.add_argument(
         "--font",
         type=str,
-        default="Geneva",
-        help='Font family name (default: "Geneva")',
+        default=None,
+        help=(
+            "Font family name (default: first available from a portable list; "
+            "install 'invariant-gfx[fonts]' to get one)"
+        ),
     )
     parser.add_argument(
         "--font-size",
@@ -254,6 +259,8 @@ def main():
 
     args = parser.parse_args()
 
+    font = resolve_example_font(args.font)
+
     # Parse colors
     try:
         text_color = parse_rgba(args.text_color)
@@ -266,7 +273,7 @@ def main():
     # Create graph
     graph = create_badge_graph(
         text=args.text,
-        font=args.font,
+        font=font,
         font_size=Decimal(str(args.font_size)),
         text_color=text_color,
         bg_color=bg_color,
@@ -286,7 +293,7 @@ def main():
     # Execute graph
     print("Generating text badge...")
     print(f"  Text: {args.text}")
-    print(f"  Font: {args.font} ({args.font_size}pt)")
+    print(f"  Font: {font} ({args.font_size}pt)")
     print(f"  Text color: {text_color}")
     print(f"  Background color: {bg_color}")
     if border_color:

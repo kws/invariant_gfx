@@ -9,7 +9,7 @@ from invariant_gfx.anchors import relative
 from invariant_gfx.artifacts import ImageArtifact
 
 
-def test_thermometer_button_template():
+def test_thermometer_button_template(test_font_family: str):
     """Test rendering a thermometer button template with context."""
     registry = OpRegistry()
     register_core_ops(registry)
@@ -39,7 +39,7 @@ def test_thermometer_button_template():
             op_name="gfx:render_text",
             params={
                 "text": "${temperature}",
-                "font": "Inter",
+                "font": test_font_family,
                 "size": 12,
                 "color": (255, 255, 255, 255),  # White RGBA
             },
@@ -119,7 +119,7 @@ def test_thermometer_button_template():
     assert result1.get_stable_hash() != result2.get_stable_hash()
 
 
-def test_simple_square_canvas():
+def test_simple_square_canvas(test_font_family: str):
     """Test rendering a simple square canvas with icon and text."""
     registry = OpRegistry()
     register_core_ops(registry)
@@ -145,7 +145,7 @@ def test_simple_square_canvas():
             op_name="gfx:render_text",
             params={
                 "text": "${label}",
-                "font": "Inter",
+                "font": test_font_family,
                 "size": 14,
                 "color": (255, 255, 255, 255),
             },

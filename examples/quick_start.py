@@ -21,12 +21,15 @@ from invariant.store.memory import MemoryStore
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
 
+from example_fonts import resolve_example_font
 
-def create_graph(size: int) -> dict:
+
+def create_graph(size: int, font: str) -> dict:
     """Create the graph for a given size.
 
     Args:
         size: Canvas size (width and height in pixels)
+        font: Font family name (must be resolvable by JustMyType)
 
     Returns:
         Graph dictionary.
@@ -40,7 +43,7 @@ def create_graph(size: int) -> dict:
             op_name="gfx:render_text",
             params={
                 "text": "Hello",
-                "font": "Geneva",
+                "font": font,
                 "size": int(font_size),
                 "color": (255, 255, 255, 255),  # White RGBA
             },
@@ -98,8 +101,10 @@ def main():
 
     args = parser.parse_args()
 
+    font = resolve_example_font()
+
     # Create graph
-    graph = create_graph(args.size)
+    graph = create_graph(args.size, font)
 
     # Setup executor
     registry = OpRegistry()
@@ -111,6 +116,7 @@ def main():
     # Execute graph
     print("Generating image...")
     print(f"  Size: {args.size}x{args.size}")
+    print(f"  Font: {font}")
     font_size = Decimal(str(args.size)) * Decimal("14") / Decimal("72")
     print(f"  Font size: {font_size}pt (scaled from 14pt at 72px reference)")
 

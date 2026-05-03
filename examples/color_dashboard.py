@@ -20,6 +20,8 @@ from invariant.store.memory import MemoryStore
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
 
+from example_fonts import resolve_example_font
+
 
 # Color mapping
 COLOR_MAP = {
@@ -67,12 +69,15 @@ def parse_items(items_str: str) -> list[tuple[str, int, str]]:
     return items
 
 
-def create_dashboard_graph(items: list[tuple[str, int, str]], cell_size: int) -> dict:
+def create_dashboard_graph(
+    items: list[tuple[str, int, str]], cell_size: int, font: str
+) -> dict:
     """Create the dashboard graph.
 
     Args:
         items: List of (label, value, color) tuples
         cell_size: Size of each cell in pixels
+        font: Font family name
 
     Returns:
         Graph dictionary.
@@ -102,7 +107,7 @@ def create_dashboard_graph(items: list[tuple[str, int, str]], cell_size: int) ->
             op_name="gfx:render_text",
             params={
                 "text": label,
-                "font": "Geneva",
+                "font": font,
                 "size": Decimal("14"),
                 "color": (255, 255, 255, 255),  # White
             },
@@ -115,7 +120,7 @@ def create_dashboard_graph(items: list[tuple[str, int, str]], cell_size: int) ->
             op_name="gfx:render_text",
             params={
                 "text": str(value),
-                "font": "Geneva",
+                "font": font,
                 "size": Decimal("18"),
                 "color": (255, 255, 255, 255),  # White
             },
@@ -262,6 +267,8 @@ def main():
 
     args = parser.parse_args()
 
+    font = resolve_example_font()
+
     # Parse items
     try:
         items = parse_items(args.items)
@@ -274,7 +281,7 @@ def main():
         return 1
 
     # Create graph
-    graph = create_dashboard_graph(items, args.cell_size)
+    graph = create_dashboard_graph(items, args.cell_size, font)
 
     # Setup executor
     registry = OpRegistry()

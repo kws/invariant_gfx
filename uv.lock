@@ -360,21 +360,21 @@ wheels = [
 
 [[package]]
 name = "invariant-core"
-version = "0.3.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
     { name = "cel-python" },
     { name = "diskcache" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/bf/77a4c5362ac387210dea45c57fa69bbe058e7d860a46aff48aca3e6ba1ee/invariant_core-0.3.0.tar.gz", hash = "sha256:04dbd30fafc7062feb44f86822e29e98a0255ddee07654317962e6bf2aa35a6b", size = 237082, upload-time = "2026-04-21T08:58:32.386Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/27/844e5f15b5ac3f2bea549e6415b1bdc61a514db913047da97bff0f11b84a/invariant_core-0.5.1.tar.gz", hash = "sha256:396fd862fb6c6325d3478ac00e1e0ad2fcf8251397e35d91bef2eac8153fdad4", size = 258248, upload-time = "2026-05-03T19:52:22.292Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/65/e08b0e3df1e06fe6890d10acc10e7122d78226b6c3e92f501a706a3baf9b/invariant_core-0.3.0-py3-none-any.whl", hash = "sha256:ab392e916393bee4d5cca9b0fb7fe803803dac5bab8c61915c9c9f1274fd4fe2", size = 37542, upload-time = "2026-04-21T08:58:30.547Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/34/77bb26a96b35a88461b6e4f7c8024cc0b93ed2b54d9d301cbc88bd27c500/invariant_core-0.5.1-py3-none-any.whl", hash = "sha256:0b7a0bbf1208ca3e63ca5eeeae5036d9eb24a3ec4a466c8e9ac63590ea82fc30", size = 41519, upload-time = "2026-05-03T19:52:20.808Z" },
 ]
 
 [[package]]
 name = "invariant-gfx"
-version = "0.3.0.dev0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "cairosvg" },
@@ -384,10 +384,16 @@ dependencies = [
     { name = "pillow" },
 ]
 
+[package.optional-dependencies]
+fonts = [
+    { name = "justmytype-western-core" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "justmyresource", extra = ["icons"] },
     { name = "justmytype" },
+    { name = "justmytype-western-core" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
@@ -396,16 +402,19 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cairosvg", specifier = ">=2.8.2,<3.0.0" },
-    { name = "invariant-core", specifier = ">=0.2.0" },
+    { name = "invariant-core", specifier = ">=0.5.1" },
     { name = "justmyresource", specifier = ">=1.1.1,<2.0.0" },
     { name = "justmytype", specifier = ">=0.3.0,<1.0.0" },
+    { name = "justmytype-western-core", marker = "extra == 'fonts'", specifier = ">=0.1.0" },
     { name = "pillow", specifier = ">=12.1.1,<13.0.0" },
 ]
+provides-extras = ["fonts"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "justmyresource", extras = ["icons"], specifier = ">=1.1.1" },
     { name = "justmytype", specifier = ">=0.3.0" },
+    { name = "justmytype-western-core", specifier = ">=0.1.0" },
     { name = "pre-commit", specifier = ">=3.8.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.1" },
@@ -515,6 +524,17 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/88/68/0a6521acd3d36ed8be472b5f71b93268fee8f4ac90707da18c38e686ed69/justmytype-0.3.0.tar.gz", hash = "sha256:6675a1aab63a2fce99af34d948bf2b0a9fb98b78cbe53c61fef2409fbd71c822", size = 17084, upload-time = "2026-02-14T16:35:49.53Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/b2/94dcb07cc62343d5cbb242599f0e690f2603a4d213394fcc9f8510b117c5/justmytype-0.3.0-py3-none-any.whl", hash = "sha256:1055bce47cc94495d9374ea9037d66318b274a80add4ed55048c73a07975ed70", size = 19819, upload-time = "2026-02-14T16:35:48.47Z" },
+]
+
+[[package]]
+name = "justmytype-western-core"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "justmytype" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/1f/97c650425954fa1c4319a9a7d7ea4d81e175aa7d5b0f6b38255edc1218ae/justmytype_western_core-0.1.0-py3-none-any.whl", hash = "sha256:632e7ef422e73b4a0435031238e00b91553871da9e7dc88e8ba8ff53b72c8e7e", size = 9672754, upload-time = "2026-02-21T12:49:12.092Z" },
 ]
 
 [[package]]

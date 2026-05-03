@@ -117,7 +117,7 @@
           "fit_width": {
             "$cel": "max(1, width_value - 40)"
           },
-          "font": "Geneva",
+          "font": "Inter",
           "text": {
             "$ref": "text_value"
           }

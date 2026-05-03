@@ -11,7 +11,7 @@ This example demonstrates the full op chain from the architecture specification:
 
 Usage:
     uv run python examples/thermometer_button.py
-    uv run python examples/thermometer_button.py --size 72 --icon lucide:thermometer --temperature "22.5C" --font Geneva --output output/thermo.png
+    uv run python examples/thermometer_button.py --size 72 --icon lucide:thermometer --temperature "22.5C" --font "Inter" --output output/thermo.png
 """
 
 import argparse
@@ -25,6 +25,8 @@ from invariant.store.memory import MemoryStore
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
 
+from example_fonts import resolve_example_font
+
 
 def create_thermometer_graph(
     size: int, icon_name: str, temperature: str, font: str
@@ -35,7 +37,7 @@ def create_thermometer_graph(
         size: Canvas size (width and height in pixels)
         icon_name: Icon resource name (e.g., "lucide:thermometer")
         temperature: Temperature text to display
-        font: Font family name (e.g., "Geneva")
+        font: Font family name (must be resolvable by JustMyType)
 
     Returns:
         Graph dictionary.
@@ -139,8 +141,11 @@ def main():
     parser.add_argument(
         "--font",
         type=str,
-        default="Geneva",
-        help='Font family name (default: "Geneva")',
+        default=None,
+        help=(
+            "Font family name (default: first available; "
+            "install 'invariant-gfx[fonts]' to get one)"
+        ),
     )
     parser.add_argument(
         "--output",
@@ -151,12 +156,14 @@ def main():
 
     args = parser.parse_args()
 
+    font = resolve_example_font(args.font)
+
     # Create graph
     graph = create_thermometer_graph(
         size=args.size,
         icon_name=args.icon,
         temperature=args.temperature,
-        font=args.font,
+        font=font,
     )
 
     # Setup executor
@@ -172,7 +179,7 @@ def main():
     print(f"  Size: {args.size}x{args.size}")
     print(f"  Icon: {args.icon}")
     print(f"  Temperature: {args.temperature}")
-    print(f"  Font: {args.font}")
+    print(f"  Font: {font}")
 
     results = executor.execute(graph)
 
