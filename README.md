@@ -116,7 +116,7 @@ Proportional sizing can also be driven by **context + CEL** when using the templ
 - `examples/text_drop_shadow.py` — Text with drop-shadow recipe (effect subgraph).
 - `examples/effects_showcase.py` — All effect recipes (drop shadow, outer stroke, outer glow, inner shadow, inner glow, reflection) in a grid.
 - `examples/shapes_showcase.py` — Shapes library (rect, circle, etc.) with render_svg.
-- `examples/serialized/square_button_badge.json` — Parameterized serialized graph-output template for a fit-width text badge.
+- `examples/serialized/square_button_badge.json` — Parameterized serialized graph document for a fit-width text badge.
 
 **Where to go next:** See [docs/README.md](docs/README.md) for the documentation index. For op specs and the template+context pattern, see [docs/architecture.md](docs/architecture.md). For reference pipelines, see [docs/reference_pipelines.md](docs/reference_pipelines.md). For effects and filter primitives, see [docs/effects.md](docs/effects.md).
 

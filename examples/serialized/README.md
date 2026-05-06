@@ -2,8 +2,9 @@
 
 ## Square Button Badge
 
-[`square_button_badge.json`](./square_button_badge.json) is a graph-output
-wrapper for a square button/badge template:
+[`square_button_badge.json`](./square_button_badge.json) is a serialized graph
+document for a square button/badge template. It declares `final` as its default
+`output`, so the CLI can execute it without `--pick`:
 
 - `gfx:create_solid` creates a 144x144 button background.
 - `stdlib:coalesce` resolves optional `text`, `color`, `width`, and `height`
@@ -38,7 +39,17 @@ uv run python -m invariant \
 
 The CLI selects the `final` `ImageArtifact` and writes it as a PNG. Without
 `--output`, the selected artifact is emitted as Invariant JSON. In Python, load
-the same graph with `load_graph_output_from_dict()`, execute with a context such
-as `{"text": "SALE", "color": "gold", "width": 144, "height": 72}`, or pass
-explicit `None` values to select graph-local defaults, then save
-`results[output].image` as PNG.
+the same graph with `load_graph_document_from_dict()`, execute the returned
+default output with a context such as `{"text": "SALE", "color": "gold",
+"width": 144, "height": 72}`, or pass explicit `None` values to select
+graph-local defaults, then save `results[output].image` as PNG.
+
+For controller-style integrations, the graph can be encoded once as an
+Invariant graph data URI and reused with query-string context:
+
+```text
+data:application/vnd.invariant.graph+json;base64,<encoded-square-button-badge>?text=SALE&color=gold&width=144&height=72
+```
+
+The encoded graph document is static and cacheable. The query string provides
+per-render context values.

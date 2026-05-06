@@ -1,7 +1,7 @@
 {
+  "format": "invariant-graph",
+  "output": "final",
   "graph": {
-    "format": "invariant-graph",
-    "graph": {
       "background": {
         "deps": [
           "height_value",
@@ -153,8 +153,6 @@
           ]
         }
       }
-    },
-    "version": 1
   },
-  "output": "final"
+  "version": 1
 }
