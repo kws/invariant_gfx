@@ -14,14 +14,12 @@ import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
-
-from example_fonts import resolve_example_font
 
 
 def create_graph(size: int, font: str) -> dict:
@@ -84,7 +82,10 @@ def create_graph(size: int, font: str) -> dict:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate a simple text-on-background image using Invariant GFX pipeline"
+        description=(
+            "Generate a simple text-on-background image using Invariant GFX "
+            "pipeline"
+        )
     )
     parser.add_argument(
         "--size",
@@ -120,7 +121,7 @@ def main():
     font_size = Decimal(str(args.size)) * Decimal("14") / Decimal("72")
     print(f"  Font size: {font_size}pt (scaled from 14pt at 72px reference)")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
 
     # Save output
     output_path = Path(args.output)

@@ -23,15 +23,13 @@ import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
 from invariant_gfx.shapes import rounded_rect
-
-from example_fonts import resolve_example_font
 
 
 def parse_rgba(color_str: str) -> tuple[int, int, int, int]:
@@ -167,7 +165,8 @@ def create_badge_graph(
             params={
                 "svg_content": badge_svg_template,  # Contains ${...} expressions
                 "width": f"${{text.width + {padding_x * 2}}}",  # Text width + padding
-                "height": f"${{text.height + {padding_y * 2}}}",  # Text height + padding
+                # Text height + padding
+                "height": f"${{text.height + {padding_y * 2}}}",
             },
             deps=["text"],
         ),
@@ -236,7 +235,10 @@ def main():
         "--border-color",
         type=str,
         default=None,
-        help='Border color as "R,G,B" or "R,G,B,A" (default: darker version of bg-color)',
+        help=(
+            'Border color as "R,G,B" or "R,G,B,A" '
+            "(default: darker version of bg-color)"
+        ),
     )
     parser.add_argument(
         "--padding-x",
@@ -300,7 +302,7 @@ def main():
         print(f"  Border color: {border_color}")
     print(f"  Padding: {args.padding_x}x{args.padding_y}")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
 
     # Save output
     output_path = Path(args.output)

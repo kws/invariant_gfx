@@ -8,20 +8,21 @@ and for producing overlay assets (e.g. for Stream Deck or badges).
 Usage:
     uv run python examples/text_drop_shadow.py
     uv run python examples/text_drop_shadow.py --text "Hello"
-    uv run python examples/text_drop_shadow.py --text "42" --font-size 24 --output output/shadow.png
+    uv run python examples/text_drop_shadow.py \
+      --text "42" \
+      --font-size 24 \
+      --output output/shadow.png
 """
 
 import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
-
-from example_fonts import resolve_example_font
 from invariant_gfx.anchors import relative
 from invariant_gfx.recipes import drop_shadow
 
@@ -160,10 +161,11 @@ def main() -> int:
     print("Rendering text with drop shadow (transparent background)...")
     print(f"  Text: {args.text!r}  Font: {font}  Size: {args.font_size}pt")
     print(
-        f"  Canvas: {args.width}x{args.height}  Shadow: dx={args.shadow_dx} dy={args.shadow_dy} sigma={sigma}"
+        f"  Canvas: {args.width}x{args.height}  "
+        f"Shadow: dx={args.shadow_dx} dy={args.shadow_dy} sigma={sigma}"
     )
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -171,7 +173,8 @@ def main() -> int:
 
     print(f"\nSaved: {out_path}")
     print(
-        f"  Size: {results['final'].image.width}x{results['final'].image.height}  Mode: RGBA"
+        f"  Size: {results['final'].image.width}x"
+        f"{results['final'].image.height}  Mode: RGBA"
     )
     return 0
 

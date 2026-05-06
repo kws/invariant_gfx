@@ -3,7 +3,6 @@
 from invariant import Executor, Node
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.artifacts import ImageArtifact
 
@@ -34,7 +33,7 @@ def test_packed_text_fits_canvas(test_font_family: str):
         )
     }
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["label"])
     assert isinstance(results["label"], ImageArtifact)
     assert results["label"].width == 196
     assert results["label"].height == 196
@@ -59,21 +58,22 @@ def test_packed_text_handles_long_single_token(test_font_family: str):
         )
     }
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["label"])
     assert results["label"].width == 196
     assert results["label"].height == 196
 
 
 def test_packed_text_handles_extreme_phrase_with_drop(test_font_family: str):
-    """Very long phrases should still render by reducing size and dropping trailing words."""
+    """Very long phrases should render by shrinking and dropping words."""
     executor = _make_executor()
     graph = {
         "label": Node(
             op_name="gfx:packed_text",
             params={
                 "text": (
-                    "Music to Listen to~Dance to~Blaze to~Pray to~Feed to~Sleep to~Talk to~"
-                    "Grind to~Trip to~Breathe to~Help to~Hurt to~Scroll to~Roll to~Love to~"
+                    "Music to Listen to~Dance to~Blaze to~Pray to~Feed to~"
+                    "Sleep to~Talk to~Grind to~Trip to~Breathe to~Help to~"
+                    "Hurt to~Scroll to~Roll to~Love to~"
                     "Hate to~Learn Too~Plot to~Play to~Be to~Feel to~Breed to~Sweat to~"
                     "Dream to~Hide to~Live to~Die to~Go To"
                 ),
@@ -88,6 +88,6 @@ def test_packed_text_handles_extreme_phrase_with_drop(test_font_family: str):
         )
     }
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["label"])
     assert results["label"].width == 196
     assert results["label"].height == 196

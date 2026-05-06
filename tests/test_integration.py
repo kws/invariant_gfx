@@ -3,7 +3,6 @@
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
 from invariant_gfx.artifacts import ImageArtifact
@@ -88,6 +87,7 @@ def test_thermometer_button_template(test_font_family: str):
     # Render with context
     results1 = executor.execute(
         graph=template,
+        outputs=["final"],
         context={
             "icon": "lucide:thermometer",
             "temperature": "22.5°C",
@@ -103,6 +103,7 @@ def test_thermometer_button_template(test_font_family: str):
     # Render again with different context (should use cache for shared artifacts)
     results2 = executor.execute(
         graph=template,
+        outputs=["final"],
         context={
             "icon": "lucide:thermometer",  # Same icon (should be cached)
             "temperature": "18.0°C",  # Different temperature
@@ -186,6 +187,7 @@ def test_simple_square_canvas(test_font_family: str):
 
     results = executor.execute(
         graph=template,
+        outputs=["final"],
         context={
             "icon": "lucide:lightbulb",
             "label": "ON",

@@ -15,14 +15,12 @@ import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, SubGraphNode, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
-
-from example_fonts import resolve_example_font
 from invariant_gfx.shapes import (
     arc,
     arrow,
@@ -47,9 +45,10 @@ def make_shape_cell(
     label_color: tuple[int, int, int, int],
     font: str,
 ) -> SubGraphNode:
-    """Return a SubGraphNode that draws the shape, the label text, and layouts them vertically.
+    """Return a SubGraphNode that draws and labels a shape.
 
-    The internal graph: shape (gfx:render_svg) + label (gfx:render_text) → layout (gfx:layout).
+    The internal graph renders the shape and label, then lays them out
+    vertically.
     """
     w = Decimal(str(cell_size))
     h = Decimal(str(cell_size))
@@ -225,7 +224,7 @@ def main():
     print("  Shapes: rect, rounded_rect, circle, ellipse, line,")
     print("          polygon, arc, diamond, parallelogram, hexagon, arrow")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     results["final"].image.save(output_path, format="PNG")

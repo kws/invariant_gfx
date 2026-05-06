@@ -573,6 +573,7 @@ The `Executor.execute()` method natively supports context injection:
 # Execute graph with external context
 results = executor.execute(
     graph=my_graph,
+    outputs=["final"],
     context={
         "root": {...},  # External dependencies (must be ICacheable)
     },
@@ -609,8 +610,8 @@ flowchart LR
     end
     
     subgraph render [Render Calls]
-        R1["executor.execute(template, context1)"]
-        R2["executor.execute(template, context2)"]
+        R1["executor.execute(template, ['final'], context1)"]
+        R2["executor.execute(template, ['final'], context2)"]
     end
     
     C1 --> R1
@@ -726,6 +727,7 @@ template = {
 # upstream Invariant docs for full context semantics.
 result1: ImageArtifact = executor.execute(
     graph=template,
+    outputs=["final"],
     context={
         "root": {
             "size": {"width": 72, "height": 72},
@@ -737,6 +739,7 @@ result1: ImageArtifact = executor.execute(
 
 result2: ImageArtifact = executor.execute(
     graph=template,
+    outputs=["final"],
     context={
         "root": {
             "size": {"width": 72, "height": 72},

@@ -11,21 +11,24 @@ This example demonstrates the full op chain from the architecture specification:
 
 Usage:
     uv run python examples/thermometer_button.py
-    uv run python examples/thermometer_button.py --size 72 --icon lucide:thermometer --temperature "22.5C" --font "Inter" --output output/thermo.png
+    uv run python examples/thermometer_button.py \
+      --size 72 \
+      --icon lucide:thermometer \
+      --temperature "22.5C" \
+      --font "Inter" \
+      --output output/thermo.png
 """
 
 import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
-
-from example_fonts import resolve_example_font
 
 
 def create_thermometer_graph(
@@ -181,7 +184,7 @@ def main():
     print(f"  Temperature: {args.temperature}")
     print(f"  Font: {font}")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
 
     # Save output
     output_path = Path(args.output)

@@ -101,7 +101,7 @@ graph = {
     ),
 }
 
-results = executor.execute(graph)
+results = executor.execute(graph, ["final"])
 results["final"].image.save("output.png", format="PNG")
 ```
 

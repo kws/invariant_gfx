@@ -7,10 +7,8 @@ the GFX codebase produces params or structures that break serialization.
 
 from decimal import Decimal
 
-
 from invariant import Node, SubGraphNode, cel, ref
 from invariant.graph_serialization import dump_graph, load_graph
-
 from invariant_gfx.anchors import relative
 
 
@@ -207,7 +205,6 @@ class TestGfxGraphExecuteAfterLoad:
         from invariant import Executor
         from invariant.registry import OpRegistry
         from invariant.store.memory import MemoryStore
-
         from invariant_gfx import register_core_ops
 
         graph = {
@@ -238,6 +235,6 @@ class TestGfxGraphExecuteAfterLoad:
         store = MemoryStore()
         executor = Executor(registry=registry, store=store)
 
-        results = executor.execute(loaded)
+        results = executor.execute(loaded, ["final"])
         assert results["final"].width == 72
         assert results["final"].height == 72

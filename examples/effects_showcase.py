@@ -7,21 +7,21 @@ applying each to a text source and compositing into a grid.
 
 Usage:
     uv run python examples/effects_showcase.py
-    uv run python examples/effects_showcase.py --cell-size 80 --output output/effects.png
+    uv run python examples/effects_showcase.py \
+      --cell-size 80 \
+      --output output/effects.png
 """
 
 import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
-
-from example_fonts import resolve_example_font
 from invariant_gfx.recipes import (
     drop_shadow,
     inner_glow,
@@ -453,7 +453,7 @@ def main():
     print("  Effects: drop_shadow, outer_stroke, outer_glow,")
     print("           inner_shadow, inner_glow, reflection")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     results["final"].image.save(output_path, format="PNG")

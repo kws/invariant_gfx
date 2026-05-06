@@ -32,7 +32,7 @@ classifiers = [
     "Topic :: Multimedia :: Graphics",
 ]
 dependencies = [
-    "invariant-core>=0.5.1",
+    "invariant-core>=0.6.0.dev0",
     "justmytype>=0.3.0,<1.0.0",
     "justmyresource>=1.1.1,<2.0.0",
     "Pillow>=12.1.1,<13.0.0",

@@ -5,7 +5,6 @@ from decimal import Decimal
 from invariant import Executor, Node
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.artifacts import ImageArtifact
 from invariant_gfx.recipes import drop_shadow
@@ -19,7 +18,7 @@ def _make_executor():
 
 
 def test_drop_shadow_happy_path():
-    """Execute a parent graph with drop_shadow subgraph; shadow artifact is present and ImageArtifact."""
+    """Execute a parent graph with a drop_shadow subgraph."""
     executor = _make_executor()
     graph = {
         "source": Node(
@@ -29,7 +28,7 @@ def test_drop_shadow_happy_path():
         ),
         "shadow": drop_shadow("source", dx=2, dy=2, sigma=Decimal("3")),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["source", "shadow"])
     assert "source" in results
     assert "shadow" in results
     assert isinstance(results["source"], ImageArtifact)
@@ -42,7 +41,7 @@ def test_drop_shadow_happy_path():
 
 
 def test_drop_shadow_context_wiring():
-    """Subgraph receives source from context; output differs from source (blur + translate)."""
+    """Subgraph output differs from source after blur and translate."""
     executor = _make_executor()
     graph = {
         "source": Node(
@@ -52,7 +51,7 @@ def test_drop_shadow_context_wiring():
         ),
         "shadow": drop_shadow("source", dx=3, dy=3, sigma=Decimal("2")),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["source", "shadow"])
     source_artifact = results["source"]
     shadow_artifact = results["shadow"]
     assert source_artifact is not shadow_artifact
@@ -72,7 +71,7 @@ def test_drop_shadow_with_radius_includes_dilate():
         ),
         "shadow": drop_shadow("source", dx=1, dy=1, radius=2, sigma=Decimal("1")),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["shadow"])
     assert isinstance(results["shadow"], ImageArtifact)
 
 
@@ -87,8 +86,8 @@ def test_drop_shadow_zero_offset_omits_translate():
         ),
         "shadow": drop_shadow("source", dx=0, dy=0, sigma=Decimal("1")),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["shadow"])
     assert isinstance(results["shadow"], ImageArtifact)
-    # No translate: shadow size should match blurred source size (same or close to source)
+    # No translate: shadow size should be same or close to source.
     assert results["shadow"].width >= 12
     assert results["shadow"].height >= 12

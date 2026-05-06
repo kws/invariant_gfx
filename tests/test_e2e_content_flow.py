@@ -9,7 +9,6 @@ from decimal import Decimal
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 
 
@@ -70,7 +69,7 @@ def test_content_flow_row_layout():
 
     store = MemoryStore()
     executor = Executor(registry=registry, store=store)
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["row_layout"])
 
     # Verify row layout dimensions
     # Width = 20 + 5 + 20 + 5 + 20 = 70
@@ -87,7 +86,7 @@ def test_content_flow_row_layout():
     # Block is 20x20, centered at y=5 (since max height is 30), so y=15 is center
     assert row_image.getpixel((35, 10)) == (0, 200, 0, 255)
     # Third block (blue) at right edge, centered vertically
-    # Block is 20x10, positioned at x=50 (20+5+20+5), centered at y=10 (since max height is 30)
+    # Block is 20x10, at x=50 (20+5+20+5), centered at y=10.
     assert row_image.getpixel((50, 10)) == (0, 0, 200, 255)
 
 
@@ -148,7 +147,7 @@ def test_content_flow_column_layout():
 
     store = MemoryStore()
     executor = Executor(registry=registry, store=store)
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["col_layout"])
 
     # Verify column layout dimensions
     # Width = max(20, 20, 20) = 20
@@ -226,7 +225,7 @@ def test_content_flow_fan_out():
 
     store = MemoryStore()
     executor = Executor(registry=registry, store=store)
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["row_layout", "col_layout"])
 
     # Verify both layouts produce correct outputs
     # Row layout

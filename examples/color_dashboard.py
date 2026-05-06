@@ -6,22 +6,22 @@ Exercises layout nesting and text rendering.
 
 Usage:
     uv run python examples/color_dashboard.py
-    uv run python examples/color_dashboard.py --items "CPU:75:red,MEM:42:green,DISK:91:blue" --cell-size 80 --output output/dashboard.png
+    uv run python examples/color_dashboard.py \
+      --items "CPU:75:red,MEM:42:green,DISK:91:blue" \
+      --cell-size 80 \
+      --output output/dashboard.png
 """
 
 import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node, ref
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.anchors import relative
-
-from example_fonts import resolve_example_font
-
 
 # Color mapping
 COLOR_MAP = {
@@ -57,10 +57,10 @@ def parse_items(items_str: str) -> list[tuple[str, int, str]]:
         label, value_str, color = parts
         try:
             value = int(value_str)
-        except ValueError:
+        except ValueError as exc:
             raise ValueError(
                 f"Invalid value in item: {item_str}. Value must be integer"
-            )
+            ) from exc
         if color not in COLOR_MAP:
             raise ValueError(
                 f"Unknown color: {color}. Available: {list(COLOR_MAP.keys())}"
@@ -250,7 +250,10 @@ def main():
         "--items",
         type=str,
         default="CPU:75:red,MEM:42:green,DISK:91:blue",
-        help='Comma-separated items in format "LABEL:VALUE:COLOR" (e.g., "CPU:75:red,MEM:42:green")',
+        help=(
+            'Comma-separated items in format "LABEL:VALUE:COLOR" '
+            '(e.g., "CPU:75:red,MEM:42:green")'
+        ),
     )
     parser.add_argument(
         "--cell-size",
@@ -298,7 +301,7 @@ def main():
     for label, value, color in items:
         print(f"    - {label}: {value}% ({color})")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["final"])
 
     # Save output
     output_path = Path(args.output)

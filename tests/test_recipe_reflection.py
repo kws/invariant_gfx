@@ -5,7 +5,6 @@ from decimal import Decimal
 from invariant import Executor, Node
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
 from invariant_gfx.artifacts import ImageArtifact
 from invariant_gfx.recipes import reflection
@@ -29,7 +28,7 @@ def test_reflection_happy_path():
         ),
         "refl": reflection("source"),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["source", "refl"])
     assert "source" in results
     assert "refl" in results
     assert isinstance(results["source"], ImageArtifact)
@@ -50,7 +49,7 @@ def test_reflection_with_squash():
         ),
         "refl": reflection("source", squash=Decimal("0.5")),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["refl"])
     assert results["refl"].width == 30
     assert results["refl"].height == 20  # 40 * 0.5
 
@@ -66,7 +65,7 @@ def test_reflection_with_skew():
         ),
         "refl": reflection("source", skew=Decimal("0.05")),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["refl"])
     assert isinstance(results["refl"], ImageArtifact)
     # crop_to_content keeps only alpha > 0; gradient fades to 0 at end_pos=0.5
     assert results["refl"].width >= 20
@@ -84,7 +83,7 @@ def test_reflection_with_gap():
         ),
         "refl": reflection("source", gap=10),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["refl"])
     assert results["refl"].width == 20
     assert results["refl"].height == 30  # 20 + 10
 
@@ -104,7 +103,7 @@ def test_reflection_squash_and_skew():
             skew=Decimal("0.03"),
         ),
     }
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["refl"])
     assert isinstance(results["refl"], ImageArtifact)
     # Squashed: height = 32 * 0.5 = 16; crop_to_content trims bottom (alpha=0)
     assert results["refl"].width >= 24

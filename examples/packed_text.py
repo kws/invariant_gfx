@@ -6,19 +6,19 @@ Render multi-line text into a fixed-size canvas using the packed_text op.
 Usage:
     uv run python examples/packed_text.py "Momentary lapse of Reason"
     uv run python examples/packed_text.py "Hello world" --size 256x256
-    uv run python examples/packed_text.py "Hello world" --size 196 --output output/packed_text.png
+    uv run python examples/packed_text.py "Hello world" \
+      --size 196 \
+      --output output/packed_text.png
 """
 
 import argparse
 from pathlib import Path
 
+from example_fonts import resolve_example_font
 from invariant import Executor, Node
 from invariant.registry import OpRegistry
 from invariant.store.memory import MemoryStore
-
 from invariant_gfx import register_core_ops
-
-from example_fonts import resolve_example_font
 
 
 def parse_size(value: str) -> tuple[int, int]:
@@ -95,7 +95,7 @@ def main() -> int:
     print(f"  Text: {args.text}")
     print(f"  Size: {args.size[0]}x{args.size[1]}")
 
-    results = executor.execute(graph)
+    results = executor.execute(graph, ["packed"])
     image = results["packed"].image
 
     output_path = Path(args.output)

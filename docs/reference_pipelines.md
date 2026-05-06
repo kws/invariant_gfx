@@ -87,7 +87,7 @@ graph = {
 
 store = MemoryStore()
 executor = Executor(registry=registry, store=store)
-results = executor.execute(graph)
+results = executor.execute(graph, ["final"])
 
 # Verify output dimensions
 assert results["final"].width == 72
@@ -202,7 +202,7 @@ graph = {
 
 store = MemoryStore()
 executor = Executor(registry=registry, store=store)
-results = executor.execute(graph)
+results = executor.execute(graph, ["row_layout", "col_layout"])
 
 # Verify row layout dimensions
 # Width = 20 + 5 + 20 + 5 + 20 = 70
@@ -344,7 +344,7 @@ context1 = {
         "badge_color": {"r": 200, "g": 0, "b": 0},
     },
 }
-results1 = executor.execute(graph=template, context=context1)
+results1 = executor.execute(graph=template, outputs=["final"], context=context1)
 assert results1["final"].width == 72
 assert results1["final"].height == 72
 
@@ -355,12 +355,12 @@ context2 = {
         "badge_color": {"r": 0, "g": 0, "b": 200},
     },
 }
-results2 = executor.execute(graph=template, context=context2)
+results2 = executor.execute(graph=template, outputs=["final"], context=context2)
 assert results2["final"].width == 144
 assert results2["final"].height == 144
 
 # Third run: same as first run — should cache-hit on all nodes
-results3 = executor.execute(graph=template, context=context1)
+results3 = executor.execute(graph=template, outputs=["final"], context=context1)
 assert results3["final"].width == 72
 assert results3["final"].height == 72
 
