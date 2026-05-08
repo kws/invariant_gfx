@@ -1,5 +1,7 @@
 """Graphics operations for Invariant GFX."""
 
+from invariant.traits import OpTrait, op_traits
+
 from invariant_gfx.ops.blob_to_image import blob_to_image
 from invariant_gfx.ops.brightness_contrast import brightness_contrast
 from invariant_gfx.ops.colorize import colorize
@@ -33,7 +35,34 @@ from invariant_gfx.ops.tint import tint
 from invariant_gfx.ops.transform import transform
 from invariant_gfx.ops.translate import translate
 
-OPS = {
+LOW_COST_TRAIT = "low-cost"
+
+_IMAGE_OP_TRAITS = (
+    OpTrait.BLOCKING,
+    OpTrait.CPU_BOUND,
+    OpTrait.THREAD_SAFE,
+    OpTrait.PROCESS_SAFE,
+)
+_RESOURCE_OP_TRAITS = (
+    OpTrait.BLOCKING,
+    OpTrait.IO_BOUND,
+    OpTrait.THREAD_SAFE,
+    OpTrait.PROCESS_SAFE,
+)
+_TEXT_OP_TRAITS = (
+    OpTrait.BLOCKING,
+    OpTrait.CPU_BOUND,
+    OpTrait.IO_BOUND,
+    OpTrait.THREAD_SAFE,
+    OpTrait.PROCESS_SAFE,
+)
+_LOW_COST_OP_TRAITS = (
+    LOW_COST_TRAIT,
+    OpTrait.THREAD_SAFE,
+    OpTrait.PROCESS_SAFE,
+)
+
+_RAW_OPS = {
     "blob_to_image": blob_to_image,
     "brightness_contrast": brightness_contrast,
     "colorize": colorize,
@@ -68,8 +97,58 @@ OPS = {
     "translate": translate,
 }
 
+OP_TRAITS = {
+    "blob_to_image": _IMAGE_OP_TRAITS,
+    "brightness_contrast": _IMAGE_OP_TRAITS,
+    "colorize": _IMAGE_OP_TRAITS,
+    "composite": _IMAGE_OP_TRAITS,
+    "create_solid": _IMAGE_OP_TRAITS,
+    "crop": _IMAGE_OP_TRAITS,
+    "crop_region": _IMAGE_OP_TRAITS,
+    "crop_to_content": _IMAGE_OP_TRAITS,
+    "dilate": _IMAGE_OP_TRAITS,
+    "erode": _IMAGE_OP_TRAITS,
+    "extract_alpha": _IMAGE_OP_TRAITS,
+    "flip": _IMAGE_OP_TRAITS,
+    "gaussian_blur": _IMAGE_OP_TRAITS,
+    "gradient_opacity": _IMAGE_OP_TRAITS,
+    "grayscale": _IMAGE_OP_TRAITS,
+    "invert_alpha": _IMAGE_OP_TRAITS,
+    "layout": _IMAGE_OP_TRAITS,
+    "mask_alpha": _IMAGE_OP_TRAITS,
+    "opacity": _IMAGE_OP_TRAITS,
+    "packed_text": _TEXT_OP_TRAITS,
+    "pad": _IMAGE_OP_TRAITS,
+    "render_svg": _IMAGE_OP_TRAITS,
+    "render_text": _TEXT_OP_TRAITS,
+    "resize": _IMAGE_OP_TRAITS,
+    "resolve_color": _LOW_COST_OP_TRAITS,
+    "resolve_resource": _RESOURCE_OP_TRAITS,
+    "rotate": _IMAGE_OP_TRAITS,
+    "threshold_alpha": _IMAGE_OP_TRAITS,
+    "thumbnail": _IMAGE_OP_TRAITS,
+    "tint": _IMAGE_OP_TRAITS,
+    "transform": _IMAGE_OP_TRAITS,
+    "translate": _IMAGE_OP_TRAITS,
+}
+
+if set(OP_TRAITS) != set(_RAW_OPS):
+    missing = sorted(set(_RAW_OPS) - set(OP_TRAITS))
+    extra = sorted(set(OP_TRAITS) - set(_RAW_OPS))
+    raise RuntimeError(
+        "gfx op trait metadata must cover OPS exactly: "
+        f"missing={missing}, extra={extra}"
+    )
+
+OPS = {
+    name: op_traits(*OP_TRAITS[name])(op)
+    for name, op in _RAW_OPS.items()
+}
+
 __all__ = [
+    "LOW_COST_TRAIT",
     "OPS",
+    "OP_TRAITS",
     "blob_to_image",
     "brightness_contrast",
     "colorize",

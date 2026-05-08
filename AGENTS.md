@@ -51,7 +51,7 @@ GFX depends on **`invariant-core`** (see `dependencies` in `pyproject.toml`). If
 
 ### **Version strings (PEP 440)**
 
-- **Shipping releases:** plain semver in `pyproject.toml`, e.g. `0.2.0` (no `v` prefix in the file).
+- **Shipping releases:** plain semver or a PEP 440 pre-release in `pyproject.toml`, e.g. `0.2.0` or `0.5.0a1` (no `v` prefix in the file).
 - **Between releases:** a **development release**, e.g. `0.3.0.dev0`, until the next stable cut.
 
 ### **`uv.lock` after a version change (workspace package)**
@@ -64,15 +64,15 @@ uv lock --refresh
 
 **Why not plain `uv lock`?** A normal resolve can leave the `[[package]] name = "invariant-gfx"` stanza in `uv.lock` on the **previous** version until the lock is refreshed. **`uv lock --refresh`** forces the lockfile to match (look for output like `Updated invariant-gfx v0.2.0 -> v0.3.0.dev0`). Commit `uv.lock` together with `pyproject.toml`.
 
-### **Cutting a stable release**
+### **Cutting a stable or pre-release**
 
 1. **Branch / mainline:** finish the work to ship; ensure **`uv run pytest tests/`** passes.
-2. **Release commit:** set `version = "X.Y.Z"` in `pyproject.toml`, run **`uv lock --refresh`**, commit both files.
-   - **Commit title:** `chore: release vX.Y.Z` (include `v` in the title).
+2. **Release commit:** set `version = "X.Y.Z"` or a PEP 440 pre-release such as `version = "X.Y.ZaN"` in `pyproject.toml`, run **`uv lock --refresh`**, commit both files.
+   - **Commit title:** `chore: release vX.Y.Z` or `chore: release vX.Y.ZaN` (include `v` in the title).
    - **Commit body:** user-facing release notes (bullets). Use the git message as the canonical summary unless you add `CHANGELOG.md`.
-3. **Tag:** lightweight (or annotated) git tag **`vX.Y.Z`** on that commit.
+3. **Tag:** lightweight (or annotated) git tag **`vX.Y.Z`** or **`vX.Y.ZaN`** on that commit.
 4. **Push:** push the release commit and tag. The tag push triggers `.github/workflows/release.yml`.
-5. **Publish (CI):** GitHub Actions verifies that `vX.Y.Z` matches `pyproject.toml`, rejects dev/pre-release versions, runs tests, builds `dist/*` from the tagged source, and publishes **`invariant-gfx`** to PyPI through Trusted Publishing. Do not upload `dist/*` manually with a local PyPI token.
+5. **Publish (CI):** GitHub Actions verifies that `vX.Y.Z` or `vX.Y.ZaN` matches `pyproject.toml`, rejects dev versions, runs tests, builds `dist/*` from the tagged source, and publishes **`invariant-gfx`** to PyPI through Trusted Publishing. Do not upload `dist/*` manually with a local PyPI token.
 
 ### **GitHub Actions / PyPI Trusted Publishing**
 
@@ -98,8 +98,8 @@ Separate commit: bump to the next dev line (e.g. **`chore: bump to development r
 | `pyproject.toml` | `version` matches intended PEP 440 stable or dev string |
 | `uv.lock` | After every version edit: **`uv lock --refresh`**, then confirm `invariant-gfx` in `uv.lock` matches `pyproject.toml` |
 | `invariant-core` | Lower bound in `dependencies` is still correct for this release |
-| Git tag | **`vX.Y.Z`** matches the semver in `pyproject.toml` on the release commit |
-| Release workflow | `.github/workflows/release.yml` passes and publishes from the `vX.Y.Z` tag |
+| Git tag | **`vX.Y.Z`** or **`vX.Y.ZaN`** matches the version in `pyproject.toml` on the release commit |
+| Release workflow | `.github/workflows/release.yml` passes and publishes from the matching release tag |
 
 ## **Critical Constraints (MUST FOLLOW)**
 

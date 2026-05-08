@@ -360,16 +360,16 @@ wheels = [
 
 [[package]]
 name = "invariant-core"
-version = "0.6.0"
+version = "0.7.0a1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
     { name = "cel-python" },
     { name = "diskcache" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/d4/8d16bee366226d8f2d28c81f05214791ebdf84001a8a3d4374c93240378b/invariant_core-0.6.0.tar.gz", hash = "sha256:ad84cf3c8583dba3c0d15b9fac0047c06d64addcf2cb5c02434ec411fbb75484", size = 290957, upload-time = "2026-05-06T12:19:08.381Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/95/fc281e5dfb70a35afb70823b235b42f7180f20e26a63a28dee2a8e2151f5/invariant_core-0.7.0a1.tar.gz", hash = "sha256:28482d5416e7088c0541b7e29349735324b6566afd441fa93cc9258cb196e07b", size = 319377, upload-time = "2026-05-08T09:24:50.34Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/92/68d8d7e2a02aa4a6d9a2bf9bfdeac5bc86c0ccb7e651ca053335fd0b034d/invariant_core-0.6.0-py3-none-any.whl", hash = "sha256:127681edfd694c7cac00b1bcd1f868df5c45e580967ea4a62419c48766351915", size = 46795, upload-time = "2026-05-06T12:19:07.035Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/37/0e6bfc3840c62dfe80ac8633f0fcf948ddf5b87e02abedb4dddc6221cdc0/invariant_core-0.7.0a1-py3-none-any.whl", hash = "sha256:671108d11eea514207df5f4a6ec4ab09fd86a829bb76c9940ec7a17facee523e", size = 53836, upload-time = "2026-05-08T09:24:49.113Z" },
 ]
 
 [[package]]
@@ -402,7 +402,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cairosvg", specifier = ">=2.8.2,<3.0.0" },
-    { name = "invariant-core", specifier = ">=0.6.0" },
+    { name = "invariant-core", specifier = ">=0.7.0a1" },
     { name = "justmyresource", specifier = ">=1.1.1,<2.0.0" },
     { name = "justmytype", specifier = ">=0.3.0,<1.0.0" },
     { name = "justmytype-western-core", marker = "extra == 'fonts'", specifier = ">=0.1.0" },
